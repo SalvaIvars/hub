@@ -756,12 +756,17 @@ function hideReaderFallback() {
   document.getElementById('reader-fallback').hidden = true
 }
 
-function openReader(item) {
+function openReader(item, pushHistory = true) {
+  if (readerItem && pushHistory) {
+    readerHistory.push(readerItem)
+    if (readerHistory.length > 50) readerHistory.shift()
+  }
   if (readerItem) {
     document.querySelector(`[data-item-id="${readerItem.id}"]`)?.classList.remove('active-reader')
   }
 
   readerItem = item
+  updateBreadcrumb()
   document.querySelector(`[data-item-id="${item.id}"]`)?.classList.add('active-reader')
 
   document.getElementById('reader-title').textContent = item.title
@@ -838,6 +843,10 @@ function closeReader() {
     noteMode = false
     document.getElementById('note-mode-btn').classList.remove('active')
   }
+  if (zenMode) { zenMode = false; document.body.classList.remove('zen-mode') }
+  document.getElementById('reader-footer').hidden = false
+  document.getElementById('version-history-panel').hidden = true
+  readerHistory = []
   readerItem = null
 }
 
@@ -1052,10 +1061,13 @@ function enterNoteMode() {
   // Template bar
   document.getElementById('note-editor-template-bar').hidden = ta.value.trim().length > 0
 
-  // Note tags
+  // Note tags + pin state
   window.hub.getNote(readerItem.id).then(note => {
     document.getElementById('note-editor-tags').value = (note?.noteTags || []).map(t => '#' + t).join(' ')
+    document.getElementById('note-pin-btn')?.classList.toggle('pinned', note?.pinned || false)
   })
+  // Word count
+  updateWordCount(ta)
 
   // Backlinks + unlinked
   loadNoteEditorBacklinks(readerItem.id)
@@ -1082,6 +1094,8 @@ async function onNoteEditorInput() {
   handleSlashCommand(ta)
   // Live preview (immediate)
   renderNoteEditorPreview(ta.value)
+  // Word counter
+  updateWordCount(ta)
   // Template bar
   document.getElementById('note-editor-template-bar').hidden = ta.value.trim().length > 0
   // Debounced save
@@ -1094,6 +1108,8 @@ async function onNoteEditorInput() {
     // Also sync footer textarea
     document.getElementById('reader-note').value = ta.value
     const result = await window.hub.saveNote({ itemId: readerItem.id, content: ta.value })
+    // Save version snapshot
+    saveNoteVersion(readerItem.id, ta.value)
     // Refresh backlinks/unlinked in editor
     loadNoteEditorBacklinks(readerItem.id)
     loadNoteEditorUnlinked(readerItem)
@@ -1174,6 +1190,289 @@ document.addEventListener('mousedown', e => {
   }
 })
 
+// ── Breadcrumb navigation ─────────────────────────────────────────
+function updateBreadcrumb() {
+  const bar = document.getElementById('reader-breadcrumb')
+  if (!bar) return
+  bar.innerHTML = ''
+  if (readerHistory.length === 0) { bar.hidden = true; return }
+  bar.hidden = false
+  // Show last 5 items + current
+  const trail = readerHistory.slice(-5)
+  trail.forEach((item, i) => {
+    const span = document.createElement('span')
+    span.className = 'breadcrumb-item'
+    span.textContent = item.title.length > 25 ? item.title.slice(0, 25) + '…' : item.title
+    span.title = item.title
+    span.addEventListener('click', () => {
+      // Go back to this point in history
+      const idx = readerHistory.lastIndexOf(item)
+      const target = readerHistory.splice(idx, readerHistory.length - idx)[0]
+      openReader(target, false)
+    })
+    bar.appendChild(span)
+    if (i < trail.length - 1) {
+      const sep = document.createElement('span')
+      sep.className = 'breadcrumb-sep'
+      sep.textContent = '›'
+      bar.appendChild(sep)
+    }
+  })
+  // Current item marker
+  const sep = document.createElement('span')
+  sep.className = 'breadcrumb-sep'
+  sep.textContent = '›'
+  bar.appendChild(sep)
+  const cur = document.createElement('span')
+  cur.className = 'breadcrumb-item current'
+  cur.textContent = readerItem ? (readerItem.title.length > 25 ? readerItem.title.slice(0, 25) + '…' : readerItem.title) : ''
+  bar.appendChild(cur)
+}
+
+document.getElementById('reader-breadcrumb-back')?.addEventListener('click', () => {
+  if (readerHistory.length === 0) return
+  const prev = readerHistory.pop()
+  openReader(prev, false)
+})
+
+// ── Word counter ─────────────────────────────────────────────────
+function updateWordCount(textarea) {
+  const el = document.getElementById('note-editor-wordcount')
+  if (!el) return
+  const text = textarea.value.trim()
+  if (!text) { el.textContent = ''; return }
+  const words = text.split(/\s+/).filter(Boolean).length
+  const chars = text.length
+  el.textContent = `${words}w · ${chars}c`
+}
+
+// ── Wikilink autocomplete ────────────────────────────────────────
+let wikiAutoIdx = -1
+
+function getWikilinkContext(textarea) {
+  const val = textarea.value
+  const pos = textarea.selectionStart
+  // Find [[ before cursor without ]] in between
+  const before = val.substring(0, pos)
+  const lastOpen = before.lastIndexOf('[[')
+  if (lastOpen < 0) return null
+  const between = before.substring(lastOpen + 2)
+  if (between.includes(']]')) return null
+  return { start: lastOpen + 2, query: between }
+}
+
+function showWikiAutocomplete(textarea, dropdownId) {
+  const ctx = getWikilinkContext(textarea)
+  const dropdown = document.getElementById(dropdownId)
+  if (!dropdown) return
+  if (!ctx || ctx.query.length < 1) { dropdown.hidden = true; wikiAutoIdx = -1; return }
+
+  const q = ctx.query.toLowerCase()
+  // Search items + standalone notes
+  const allNotes = [] // We'll use state items + can't async here, so just items
+  const matches = state.items
+    .filter(i => i.title.toLowerCase().includes(q) && i.id !== readerItem?.id)
+    .slice(0, 8)
+    .map(i => ({ id: i.id, title: i.title, source: i.sourceName }))
+
+  if (matches.length === 0) { dropdown.hidden = true; wikiAutoIdx = -1; return }
+
+  dropdown.hidden = false
+  dropdown.innerHTML = ''
+  wikiAutoIdx = -1
+  matches.forEach((m, i) => {
+    const el = document.createElement('div')
+    el.className = 'wiki-auto-item'
+    el.innerHTML = `<span class="wiki-auto-title">${m.title}</span><span class="wiki-auto-source">${m.source}</span>`
+    el.addEventListener('mousedown', e => {
+      e.preventDefault()
+      insertWikiCompletion(textarea, ctx, m.title)
+      dropdown.hidden = true
+    })
+    el.dataset.idx = i
+    dropdown.appendChild(el)
+  })
+}
+
+function insertWikiCompletion(textarea, ctx, title) {
+  const val = textarea.value
+  const pos = textarea.selectionStart
+  const newVal = val.substring(0, ctx.start) + title + ']]' + val.substring(pos)
+  textarea.value = newVal
+  const newPos = ctx.start + title.length + 2
+  textarea.selectionStart = textarea.selectionEnd = newPos
+  textarea.focus()
+  // Trigger input event
+  textarea.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+function handleWikiKeydown(e, textarea, dropdownId) {
+  const dropdown = document.getElementById(dropdownId)
+  if (!dropdown || dropdown.hidden) return false
+  const items = dropdown.querySelectorAll('.wiki-auto-item')
+  if (items.length === 0) return false
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    wikiAutoIdx = Math.min(wikiAutoIdx + 1, items.length - 1)
+    items.forEach((el, i) => el.classList.toggle('active', i === wikiAutoIdx))
+    return true
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    wikiAutoIdx = Math.max(wikiAutoIdx - 1, 0)
+    items.forEach((el, i) => el.classList.toggle('active', i === wikiAutoIdx))
+    return true
+  }
+  if (e.key === 'Enter' || e.key === 'Tab') {
+    if (wikiAutoIdx >= 0 && items[wikiAutoIdx]) {
+      e.preventDefault()
+      items[wikiAutoIdx].dispatchEvent(new Event('mousedown'))
+      return true
+    }
+  }
+  if (e.key === 'Escape') {
+    dropdown.hidden = true; wikiAutoIdx = -1
+    return true
+  }
+  return false
+}
+
+// Wire autocomplete to note editor textarea
+document.getElementById('note-editor-textarea')?.addEventListener('input', () => {
+  showWikiAutocomplete(document.getElementById('note-editor-textarea'), 'wiki-autocomplete-editor')
+})
+document.getElementById('note-editor-textarea')?.addEventListener('keydown', e => {
+  handleWikiKeydown(e, document.getElementById('note-editor-textarea'), 'wiki-autocomplete-editor')
+})
+
+// Wire autocomplete to footer note textarea
+document.getElementById('reader-note')?.addEventListener('input', () => {
+  showWikiAutocomplete(document.getElementById('reader-note'), 'wiki-autocomplete-footer')
+})
+document.getElementById('reader-note')?.addEventListener('keydown', e => {
+  handleWikiKeydown(e, document.getElementById('reader-note'), 'wiki-autocomplete-footer')
+})
+
+// Wire autocomplete to standalone editor
+document.getElementById('standalone-content')?.addEventListener('input', () => {
+  showWikiAutocomplete(document.getElementById('standalone-content'), 'wiki-autocomplete-standalone')
+})
+document.getElementById('standalone-content')?.addEventListener('keydown', e => {
+  handleWikiKeydown(e, document.getElementById('standalone-content'), 'wiki-autocomplete-standalone')
+})
+
+// ── Version history ──────────────────────────────────────────────
+async function saveNoteVersion(itemId, content) {
+  await window.hub.saveNoteVersion({ itemId, content })
+}
+
+async function openVersionHistory(itemId) {
+  const versions = await window.hub.getNoteVersions(itemId)
+  const panel = document.getElementById('version-history-panel')
+  const list = document.getElementById('version-history-list')
+  if (!panel || !list) return
+  list.innerHTML = ''
+  if (versions.length === 0) {
+    list.innerHTML = '<div class="notes-empty">No history yet</div>'
+  } else {
+    versions.forEach(v => {
+      const el = document.createElement('div')
+      el.className = 'version-item'
+      const date = new Date(v.createdAt)
+      const preview = (v.content || '').slice(0, 80).replace(/\n/g, ' ')
+      el.innerHTML = `<span class="version-date">${date.toLocaleDateString('en', { month: 'short', day: 'numeric' })} ${date.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}</span><span class="version-preview">${preview}…</span>`
+      el.addEventListener('click', () => {
+        // Revert to this version
+        const ta = noteMode ? document.getElementById('note-editor-textarea') : document.getElementById('reader-note')
+        ta.value = v.content
+        ta.dispatchEvent(new Event('input', { bubbles: true }))
+        panel.hidden = true
+      })
+      list.appendChild(el)
+    })
+  }
+  panel.hidden = false
+}
+
+document.getElementById('version-history-close')?.addEventListener('click', () => {
+  document.getElementById('version-history-panel').hidden = true
+})
+
+// ── Note action buttons (pin, export, duplicate, history, zen) ────
+document.getElementById('note-pin-btn')?.addEventListener('click', async () => {
+  if (!readerItem) return
+  const note = await window.hub.togglePinNote(readerItem.id)
+  const btn = document.getElementById('note-pin-btn')
+  btn.classList.toggle('pinned', note?.pinned)
+  btn.title = note?.pinned ? 'Unpin note' : 'Pin note'
+})
+
+document.getElementById('note-export-btn')?.addEventListener('click', async () => {
+  if (!readerItem) return
+  const result = await window.hub.exportNoteMd(readerItem.id)
+  if (result.ok) showToast('Note exported.', 'info')
+  else if (result.error) showToast(result.error, 'error')
+})
+
+document.getElementById('note-duplicate-btn')?.addEventListener('click', async () => {
+  if (!readerItem) return
+  const noteId = await window.hub.duplicateToStandalone(readerItem.id)
+  if (noteId) {
+    showToast('Duplicated as standalone note.', 'info')
+    openStandaloneEditor(noteId)
+  }
+})
+
+document.getElementById('note-history-btn')?.addEventListener('click', () => {
+  if (!readerItem) return
+  openVersionHistory(readerItem.id)
+})
+
+document.getElementById('note-zen-btn')?.addEventListener('click', () => {
+  toggleZenMode()
+})
+
+// ── Zen mode ────────────────────────────────────────────────────
+function toggleZenMode() {
+  zenMode = !zenMode
+  document.body.classList.toggle('zen-mode', zenMode)
+  document.getElementById('note-zen-btn')?.classList.toggle('active', zenMode)
+  if (zenMode && !noteMode) enterNoteMode()
+}
+
+// ── Drag highlight to note ────────────────────────────────────────
+function setupHighlightDrag() {
+  const rc = document.getElementById('reader-content')
+  if (!rc) return
+  rc.addEventListener('dragstart', e => {
+    const sel = window.getSelection()
+    if (sel && !sel.isCollapsed) {
+      const text = sel.toString().trim()
+      if (text.length > 2) {
+        e.dataTransfer.setData('text/plain', `> ${text}`)
+        e.dataTransfer.effectAllowed = 'copy'
+      }
+    }
+  })
+}
+setupHighlightDrag()
+
+// Drop on note editor textarea
+;['note-editor-textarea', 'reader-note'].forEach(id => {
+  document.getElementById(id)?.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' })
+  document.getElementById(id)?.addEventListener('drop', e => {
+    e.preventDefault()
+    const text = e.dataTransfer.getData('text/plain')
+    if (!text) return
+    const ta = document.getElementById(id)
+    const pos = ta.selectionStart
+    const val = ta.value
+    ta.value = val.substring(0, pos) + '\n' + text + '\n' + val.substring(pos)
+    ta.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+})
+
 // Text selection → highlight tooltip
 document.getElementById('reader-content').addEventListener('mouseup', () => {
   const sel = window.getSelection()
@@ -1219,6 +1518,7 @@ async function persistNote() {
   const stateItem = state.items.find(i => i.id === readerItem.id)
   if (stateItem) stateItem.note = note
   const result = await window.hub.saveNote({ itemId: readerItem.id, content: note })
+  saveNoteVersion(readerItem.id, note)
   // Refresh note indicator on the card
   const card = document.querySelector(`[data-item-id="${readerItem.id}"]`)
   if (card) {
@@ -1543,6 +1843,7 @@ async function renderNotesContent() {
   content.innerHTML = ''
 
   const allNotes = await window.hub.getAllNotes()
+  const linkCounts = await window.hub.getLinkCounts()
   const allLinks = await window.hub.getAllLinks()
 
   let entries = []
@@ -1599,7 +1900,15 @@ async function renderNotesContent() {
     )
   }
 
-  entries.sort((a, b) => (b.date ? new Date(b.date) : 0) - (a.date ? new Date(a.date) : 0))
+  // Pinned first, then by date
+  entries.sort((a, b) => {
+    const noteA = allNotes.find(n => n.itemId === a.noteId)
+    const noteB = allNotes.find(n => n.itemId === b.noteId)
+    const pinA = noteA?.pinned ? 1 : 0
+    const pinB = noteB?.pinned ? 1 : 0
+    if (pinA !== pinB) return pinB - pinA
+    return (b.date ? new Date(b.date) : 0) - (a.date ? new Date(a.date) : 0)
+  })
 
   if (entries.length === 0) {
     const empty = document.createElement('p')
@@ -1626,6 +1935,28 @@ async function renderNotesContent() {
     const date = document.createElement('span')
     date.className = 'note-entry-date'
     date.textContent = formatDate(entry.date)
+    // Pin indicator
+    const noteObj = allNotes.find(n => n.itemId === entry.noteId)
+    if (noteObj?.pinned) {
+      const pin = document.createElement('span')
+      pin.className = 'note-pin-indicator'
+      pin.textContent = '📌'
+      header.appendChild(pin)
+    }
+
+    // Link counts
+    if (entry.noteId) {
+      const outCount = linkCounts.outgoing[entry.noteId] || 0
+      const inCount = linkCounts.incoming[entry.noteId] || 0
+      if (outCount > 0 || inCount > 0) {
+        const lc = document.createElement('span')
+        lc.className = 'note-link-count'
+        lc.textContent = `${outCount}→ ${inCount}←`
+        lc.title = `${outCount} outgoing, ${inCount} incoming links`
+        header.appendChild(lc)
+      }
+    }
+
     header.appendChild(title); header.appendChild(src); header.appendChild(date)
 
     const body = document.createElement('div')
@@ -2634,6 +2965,8 @@ document.addEventListener('keydown', e => {
     return
   }
   if (e.key === 'Escape') {
+    if (zenMode) { toggleZenMode(); return }
+    if (!document.getElementById('version-history-panel')?.hidden) { document.getElementById('version-history-panel').hidden = true; return }
     if (!document.getElementById('standalone-overlay').hidden) { closeStandaloneEditor(); return }
     if (!document.getElementById('quick-note-popover').hidden) { document.getElementById('quick-note-popover').hidden = true; quickNoteItem = null; return }
     if (!document.getElementById('graph-overlay').hidden) { closeGraphView(); return }

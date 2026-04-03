@@ -193,6 +193,10 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         </button>
       </div>
+      <!-- Breadcrumb -->
+      <div id="reader-breadcrumb" hidden>
+        <button id="reader-breadcrumb-back" title="Go back">←</button>
+      </div>
       <webview id="reader-wv" src="about:blank" allowpopups></webview>
       <div id="reader-content" hidden></div>
 
@@ -206,17 +210,36 @@
             <button class="template-btn-editor" data-tpl="todos">Todos</button>
             <button class="template-btn-editor" data-tpl="review">Review</button>
           </div>
+          <div id="note-editor-actions">
+            <button id="note-pin-btn" title="Pin note">📌</button>
+            <button id="note-history-btn" title="Version history">🕒</button>
+            <button id="note-export-btn" title="Export as .md">↓</button>
+            <button id="note-duplicate-btn" title="Duplicate as standalone">⧉</button>
+            <button id="note-zen-btn" title="Zen mode">Z</button>
+          </div>
           <textarea id="note-editor-textarea" placeholder="Write your note…
 
 Markdown: **bold** *italic* `code` # heading > quote - list
 Wikilinks: [[item title]]
 Commands: /date /link /template"></textarea>
-          <input type="text" id="note-editor-tags" placeholder="#note-tags" />
+          <div id="note-editor-bottom">
+            <input type="text" id="note-editor-tags" placeholder="#note-tags" />
+            <span id="note-editor-wordcount"></span>
+          </div>
+          <div id="wiki-autocomplete-editor" class="wiki-autocomplete" hidden></div>
           <div id="note-editor-backlinks"></div>
           <div id="note-editor-unlinked"></div>
         </div>
         <div id="note-editor-right">
           <div id="note-editor-preview"></div>
+        </div>
+        <!-- Version history -->
+        <div id="version-history-panel" hidden>
+          <div id="version-history-header">
+            <span>Version history</span>
+            <button id="version-history-close">✕</button>
+          </div>
+          <div id="version-history-list"></div>
         </div>
       </div>
 
@@ -276,6 +299,7 @@ Commands: /date /link /template"></textarea>
         </div>
         <div id="note-wrap">
           <textarea id="reader-note" placeholder="Note… use [[title]] to link items, /date /link /template" rows="4"></textarea>
+          <div id="wiki-autocomplete-footer" class="wiki-autocomplete" hidden></div>
           <span id="note-save-status"></span>
         </div>
         <input type="text" id="reader-note-tags" placeholder="#note-tags (note-specific)" />
@@ -378,6 +402,7 @@ Commands: /date /link /template"></textarea>
       </div>
       <textarea id="standalone-content" placeholder="Write here… use [[title]] for wikilinks, **bold**, - lists
 Commands: /date /link /template" rows="12"></textarea>
+      <div id="wiki-autocomplete-standalone" class="wiki-autocomplete" hidden></div>
       <div id="standalone-preview"></div>
       <div id="standalone-footer">
         <input type="text" id="standalone-tags" placeholder="#note-tags" />
