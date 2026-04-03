@@ -19,6 +19,7 @@ function loadData() {
   if (!data.highlights)  data.highlights  = []
   if (!data.notes)       data.notes       = []
   if (!data.links)       data.links       = []
+  if (!data.noteVersions) data.noteVersions = []
   if (data.settings.fontSize    == null) data.settings.fontSize    = 16
   if (data.settings.accentColor == null) data.settings.accentColor = ''
   return data
@@ -404,6 +405,84 @@ ipcMain.handle('delete-standalone-note', (_, noteId) => {
   data.links = data.links.filter(l => l.fromItemId !== noteId && l.toItemId !== noteId)
   saveData(data)
   return true
+})
+
+ipcMain.handle('save-note-version', (_, { itemId, content }) => {
+  const data = loadData()
+  if (!data.noteVersions) data.noteVersions = []
+  // Only save if content actually differs from last version
+  const lastV = data.noteVersions.filter(v => v.itemId === itemId).sort((a,b) => b.createdAt.localeCompare(a.createdAt))[0]
+  if (lastV && lastV.content === content) return data.noteVersions.filter(v => v.itemId === itemId)
+  data.noteVersions.push({ id: Date.now().toString(), itemId, content, createdAt: new Date().toISOString() })
+  // Keep max 30 versions per note
+  const perNote = data.noteVersions.filter(v => v.itemId === itemId)
+  if (perNote.length > 30) {
+    const oldest = perNote.sort((a,b) => a.createdAt.localeCompare(b.createdAt))[0]
+    data.noteVersions = data.noteVersions.filter(v => v.id !== oldest.id)
+  }
+  saveData(data)
+  return data.noteVersions.filter(v => v.itemId === itemId)
+})
+
+ipcMain.handle('get-note-versions', (_, itemId) => {
+  const data = loadData()
+  if (!data.noteVersions) return []
+  return data.noteVersions.filter(v => v.itemId === itemId).sort((a,b) => b.createdAt.localeCompare(a.createdAt))
+})
+
+ipcMain.handle('toggle-pin-note', (_, itemId) => {
+  const data = loadData()
+  const note = data.notes.find(n => n.itemId === itemId)
+  if (note) note.pinned = !note.pinned
+  saveData(data)
+  return note
+})
+
+ipcMain.handle('export-note-md', async (_, itemId) => {
+  const data = loadData()
+  const note = data.notes.find(n => n.itemId === itemId)
+  if (!note) return { error: 'Note not found' }
+  const item = data.items.find(i => i.id === itemId)
+  const title = item?.title || note.title || 'Untitled'
+  // Resolve wikilinks to markdown links
+  let md = `# ${title}\n\n`
+  if (item) md += `> Source: ${item.sourceName} — ${item.link || ''}\n\n`
+  md += (note.content || '').replace(/\[\[([^\]]+)\]\]/g, (m, text) => {
+    const candidates = data.items.filter(i => i.id !== itemId)
+    const target = resolveWikilink(text, candidates)
+    if (target && target.link) return `[${text}](${target.link})`
+    return text
+  })
+  if (note.noteTags?.length) md += '\n\n---\n' + note.noteTags.map(t => '#' + t).join(' ')
+  const defaultName = title.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '-').slice(0, 50) + '.md'
+  const { filePath } = await dialog.showSaveDialog(mainWindow, { defaultPath: defaultName, filters: [{ name: 'Markdown', extensions: ['md'] }] })
+  if (!filePath) return { cancelled: true }
+  fs.writeFileSync(filePath, md, 'utf-8')
+  return { ok: true }
+})
+
+ipcMain.handle('duplicate-to-standalone', (_, itemId) => {
+  const data = loadData()
+  const item = data.items.find(i => i.id === itemId)
+  const note = data.notes.find(n => n.itemId === itemId)
+  const content = note?.content || item?.note || ''
+  const title = item ? `MOC: ${item.title}` : 'Untitled'
+  const now = new Date().toISOString()
+  const noteId = 'standalone-' + Date.now()
+  data.notes.push({ id: Date.now().toString(), itemId: noteId, title, content, noteTags: note?.noteTags || [], createdAt: now, updatedAt: now })
+  updateLinksForNote(data, noteId, content)
+  saveData(data)
+  return noteId
+})
+
+ipcMain.handle('get-link-counts', () => {
+  const data = loadData()
+  const out = {}, inc = {}
+  for (const l of data.links) {
+    out[l.fromItemId] = (out[l.fromItemId] || 0) + 1
+    inc[l.toItemId] = (inc[l.toItemId] || 0) + 1
+  }
+  return { outgoing: out, incoming: inc }
 })
 
 ipcMain.handle('save-tags', (_, itemId, tags) => {

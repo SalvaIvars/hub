@@ -24,6 +24,8 @@ let notesSearchQuery = ''
 let activeStandaloneId = null
 let graphFilterCat = 'all'
 let graphFilterTag = 'all'
+let readerHistory  = []        // breadcrumb stack for wikilink navigation
+let zenMode        = false
 
 // ── Init ──────────────────────────────────────────────────────────
 async function init() {

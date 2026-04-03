@@ -1,0 +1,22 @@
+#Archivos del sistema
+.DS_Store
+Thumbs.db
+AGENTS.md 
+
+# Logs
+*.log
+
+# Dependencias
+node_modules/
+
+# Variables de entorno (MUY IMPORTANTE)
+.env
+.env.local
+
+# Builds / compilados
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea@
