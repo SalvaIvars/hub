@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hub</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ── Splash screen ───────────────────────────────── -->
+  <div id="splash"><span id="splash-title">hub</span></div>
+
+  <!-- Trigger strip for sidebar peek in focus mode -->
+  <div id="sidebar-trigger"></div>
+
+  <!-- ── Sidebar ──────────────────────────────────── -->
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <span id="app-title">hub</span>
+      <button id="refresh-btn" title="Refresh all (⌘R)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+      </button>
+    </div>
+
+    <nav id="source-list"></nav>
+
+    <div id="sidebar-footer">
+      <button id="add-btn">+ Add source</button>
+      <div id="footer-row">
+        <select id="refresh-interval" title="Auto-refresh">
+          <option value="0">Auto: off</option>
+          <option value="15">Every 15 min</option>
+          <option value="60">Every hour</option>
+          <option value="240">Every 4h</option>
+        </select>
+        <div id="footer-icons">
+          <button id="export-btn" title="Export / Import">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button id="notes-btn" title="Notes">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </button>
+          <button id="stats-btn" title="Reading stats">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </button>
+          <button id="focus-btn" title="Focus mode (F)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3"/><path d="M21 8V5a2 2 0 00-2-2h-3"/><path d="M3 16v3a2 2 0 002 2h3"/><path d="M16 21h3a2 2 0 002-2v-3"/></svg>
+          </button>
+          <button id="settings-btn" title="Settings">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="export-menu" hidden>
+        <button data-action="export-md">→ Markdown <span>(guardados)</span></button>
+        <button data-action="export-opml">→ OPML <span>(fuentes)</span></button>
+        <button data-action="import-opml">← Importar OPML</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────── -->
+  <main id="main">
+
+    <!-- ── Feed column ─────────────────────────────── -->
+    <div id="feed-col">
+      <div id="main-header">
+        <h1 id="current-title">All</h1>
+        <span id="item-count"></span>
+        <button id="mark-all-read-btn" hidden>Mark all read</button>
+      </div>
+
+      <div id="top-bar">
+        <div id="search-wrap">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="search-input" placeholder="Search… (⌘F)" />
+        </div>
+        <div id="top-bar-actions">
+          <select id="age-filter" title="Filter by age">
+            <option value="0">All time</option>
+            <option value="1">Today</option>
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+          </select>
+          <button id="hide-read-btn" title="Hide read items">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+          <select id="sort-select">
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="source">Source</option>
+          </select>
+          <button id="view-toggle"></button>
+        </div>
+      </div>
+
+      <div id="category-pills"></div>
+
+      <!-- Daily digest banner -->
+      <div id="digest-banner" hidden>
+        <div id="digest-text"></div>
+        <button id="digest-dismiss">✕</button>
+      </div>
+
+      <div id="feed">
+        <div id="empty-state" hidden>
+          <p>Nothing here yet.</p>
+          <p class="sub">Add a source or try a different filter.</p>
+        </div>
+      </div>
+
+      <!-- Stats overlay (inside feed-col) -->
+      <div id="stats-panel" hidden>
+        <div id="stats-header">
+          <span>Reading stats</span>
+          <button id="stats-close">✕</button>
+        </div>
+        <div id="stats-content"></div>
+      </div>
+
+      <!-- Notes overlay (inside feed-col) -->
+      <div id="notes-panel" hidden>
+        <div id="notes-header">
+          <span>Notes</span>
+          <button id="notes-new-standalone" title="New standalone note">+</button>
+          <button id="notes-close">✕</button>
+        </div>
+        <div id="notes-toolbar">
+          <input type="text" id="notes-search" placeholder="Search notes…" />
+          <div id="notes-filters">
+            <button class="notes-filter-btn active" data-filter="all">All</button>
+            <button class="notes-filter-btn" data-filter="timeline">Timeline</button>
+            <button class="notes-filter-btn" data-filter="orphan">Orphans</button>
+            <button class="notes-filter-btn" data-filter="has-note">With note</button>
+            <button class="notes-filter-btn" data-filter="no-note">No note</button>
+            <button class="notes-filter-btn" data-filter="standalone">Standalone</button>
+          </div>
+        </div>
+        <div id="notes-content"></div>
+      </div>
+
+      <!-- Settings overlay (inside feed-col) -->
+      <div id="settings-panel" hidden>
+        <div id="settings-header">
+          <span>Settings</span>
+          <button id="settings-close">✕</button>
+        </div>
+        <div id="settings-body">
+          <div class="setting-group">
+            <div class="setting-label">Accent color</div>
+            <input type="color" id="setting-accent" value="#5b9cf6" />
+          </div>
+          <div class="setting-group">
+            <div class="setting-label">Reader font size: <span id="setting-fontsize-val">16</span>px</div>
+            <input type="range" id="setting-fontsize" min="13" max="22" value="16" step="1" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Status bar -->
+      <div id="status-bar">
+        <span id="status-items">0 items</span>
+        <span id="status-refresh">—</span>
+        <span id="status-online" title="Online">●</span>
+      </div>
+    </div>
+
+    <!-- ── Reader panel (inside main) ──────────────── -->
+    <div id="reader-panel">
+      <div id="reader-header">
+        <button id="reader-back" title="Close (Esc)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span id="reader-title"></span>
+        <button id="reader-mode-btn" title="Reader view (RSS only)" disabled>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+        </button>
+        <button id="note-mode-btn" title="Note editor">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
+        <button id="note-help-btn" title="Help">
+          <span style="font-size:12px;font-weight:600;color:var(--text-3)">?</span>
+        </button>
+        <button id="reader-expand" title="Expand panel">
+          <svg id="reader-expand-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </button>
+        <button id="reader-external" title="Open in browser">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </button>
+      </div>
+      <webview id="reader-wv" src="about:blank" allowpopups></webview>
+      <div id="reader-content" hidden></div>
+
+      <!-- ── Note editor view (replaces webview) ─────── -->
+      <div id="note-editor-view" hidden>
+        <div id="note-editor-left">
+          <div id="note-editor-template-bar" hidden>
+            <span class="template-label">Template:</span>
+            <button class="template-btn-editor" data-tpl="summary">Summary</button>
+            <button class="template-btn-editor" data-tpl="key-ideas">Key ideas</button>
+            <button class="template-btn-editor" data-tpl="todos">Todos</button>
+            <button class="template-btn-editor" data-tpl="review">Review</button>
+          </div>
+          <textarea id="note-editor-textarea" placeholder="Write your note…
+
+Markdown: **bold** *italic* `code` # heading > quote - list
+Wikilinks: [[item title]]
+Commands: /date /link /template"></textarea>
+          <input type="text" id="note-editor-tags" placeholder="#note-tags" />
+          <div id="note-editor-backlinks"></div>
+          <div id="note-editor-unlinked"></div>
+        </div>
+        <div id="note-editor-right">
+          <div id="note-editor-preview"></div>
+        </div>
+      </div>
+
+      <!-- ── Help popover ─────────────────────────── -->
+      <div id="note-help-popover" hidden>
+        <div class="help-section">
+          <div class="help-title">Markdown</div>
+          <div class="help-row"><code>**bold**</code> → <strong>bold</strong></div>
+          <div class="help-row"><code>*italic*</code> → <em>italic</em></div>
+          <div class="help-row"><code>`code`</code> → <code class="inline">code</code></div>
+          <div class="help-row"><code># ## ###</code> → headings</div>
+          <div class="help-row"><code>&gt; text</code> → blockquote</div>
+          <div class="help-row"><code>- item</code> → list</div>
+        </div>
+        <div class="help-section">
+          <div class="help-title">Wikilinks</div>
+          <div class="help-row"><code>[[title]]</code> → link to item (case-insensitive)</div>
+          <div class="help-row">Resolved → <span style="color:var(--accent)">blue</span> · Broken → <span style="color:var(--danger)">red</span></div>
+        </div>
+        <div class="help-section">
+          <div class="help-title">Commands</div>
+          <div class="help-row"><code>/date</code> → insert current date</div>
+          <div class="help-row"><code>/link</code> → insert [[]] cursor inside</div>
+          <div class="help-row"><code>/template</code> → show templates</div>
+        </div>
+        <div class="help-section">
+          <div class="help-title">Shortcuts</div>
+          <div class="help-row"><kbd>⌘↵</kbd> save note</div>
+          <div class="help-row"><kbd>⌘N</kbd> new standalone note</div>
+          <div class="help-row"><kbd>⌘G</kbd> graph view</div>
+          <div class="help-row"><kbd>Esc</kbd> close panel</div>
+        </div>
+        <div class="help-section">
+          <div class="help-title">Note tags</div>
+          <div class="help-row"><code>#tag</code> in the note-tags field — your own concepts, separate from item tags</div>
+        </div>
+        <div class="help-section">
+          <div class="help-title">Templates</div>
+          <div class="help-row">Available when note is empty or via <code>/template</code></div>
+        </div>
+      </div>
+      <div id="highlight-tooltip" hidden>
+        <button id="highlight-save-btn">Highlight</button>
+        <button id="highlight-cite-btn">Cite to note</button>
+      </div>
+      <div id="reader-fallback" hidden>
+        <p>This page can't be embedded.</p>
+        <button id="reader-fallback-btn">Open in browser →</button>
+      </div>
+      <div id="reader-footer">
+        <div id="note-template-bar" hidden>
+          <span class="template-label">Template:</span>
+          <button class="template-btn" data-tpl="summary">Summary</button>
+          <button class="template-btn" data-tpl="key-ideas">Key ideas</button>
+          <button class="template-btn" data-tpl="todos">Todos</button>
+          <button class="template-btn" data-tpl="review">Review</button>
+        </div>
+        <div id="note-wrap">
+          <textarea id="reader-note" placeholder="Note… use [[title]] to link items, /date /link /template" rows="4"></textarea>
+          <span id="note-save-status"></span>
+        </div>
+        <input type="text" id="reader-note-tags" placeholder="#note-tags (note-specific)" />
+        <div id="note-preview" hidden></div>
+        <div id="backlinks-section" hidden>
+          <div class="backlinks-title">Backlinks</div>
+          <div id="backlinks-list"></div>
+        </div>
+        <div id="unlinked-section" hidden>
+          <div class="unlinked-title">Possible links</div>
+          <div id="unlinked-list"></div>
+        </div>
+        <input id="reader-tags" type="text" placeholder="#tag1 #tag2" />
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Add Source / Link Modal ───────────────────── -->
+  <div id="modal-overlay" hidden>
+    <div id="modal">
+      <div id="modal-header">
+        <span id="modal-title">Add source</span>
+        <button id="modal-close">✕</button>
+      </div>
+
+      <div class="field">
+        <label>Type</label>
+        <div id="type-toggle">
+          <button class="type-btn active" data-type="youtube">YouTube</button>
+          <button class="type-btn" data-type="rss">RSS / Blog</button>
+          <button class="type-btn" data-type="link">Link</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label id="name-label">Name</label>
+        <input type="text" id="input-name" placeholder="e.g. Fireship" />
+      </div>
+
+      <div class="field" id="field-url">
+        <label id="url-label">Channel URL</label>
+        <input type="text" id="input-url" placeholder="https://youtube.com/@fireship" />
+      </div>
+
+      <div class="field" id="field-category">
+        <label>Category <span class="hint">(optional)</span></label>
+        <input type="text" id="input-category" placeholder="e.g. Dev, Design, News" />
+      </div>
+
+      <div id="modal-error" hidden></div>
+      <button id="modal-submit">Add source</button>
+    </div>
+  </div>
+
+  <!-- ── Toast ────────────────────────────────────── -->
+  <div id="toast" class="toast error" hidden>
+    <pre id="toast-msg"></pre>
+    <button id="toast-undo" hidden>Undo</button>
+    <button id="toast-close">✕</button>
+  </div>
+
+  <!-- ── Command palette ──────────────────────────────── -->
+  <div id="cmd-palette-overlay" hidden>
+    <div id="cmd-palette">
+      <div id="cmd-input-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="cmd-input" placeholder="Go to source, category or run action…" autocomplete="off" />
+        <span id="cmd-hint">ESC to close</span>
+      </div>
+      <div id="cmd-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Graph view overlay ──────────────────────────── -->
+  <div id="graph-overlay" hidden>
+    <div id="graph-header">
+      <span>Graph</span>
+      <span id="graph-subtitle">Saved items &amp; connections</span>
+      <div id="graph-filters">
+        <select id="graph-filter-cat">
+          <option value="all">All categories</option>
+        </select>
+        <select id="graph-filter-tag">
+          <option value="all">All tags</option>
+        </select>
+      </div>
+      <button id="graph-close">✕</button>
+    </div>
+    <canvas id="graph-canvas"></canvas>
+  </div>
+
+  <!-- ── Standalone note modal ──────────────────────────── -->
+  <div id="standalone-overlay" hidden>
+    <div id="standalone-modal">
+      <div id="standalone-header">
+        <input type="text" id="standalone-title" placeholder="Note title…" />
+        <button id="standalone-delete" title="Delete note">🗑</button>
+        <button id="standalone-close">✕</button>
+      </div>
+      <textarea id="standalone-content" placeholder="Write here… use [[title]] for wikilinks, **bold**, - lists
+Commands: /date /link /template" rows="12"></textarea>
+      <div id="standalone-preview"></div>
+      <div id="standalone-footer">
+        <input type="text" id="standalone-tags" placeholder="#note-tags" />
+        <span id="standalone-save-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Quick note popover ──────────────────────────── -->
+  <div id="quick-note-popover" hidden>
+    <textarea id="quick-note-textarea" placeholder="Quick note…" rows="3"></textarea>
+    <div id="quick-note-actions">
+      <button id="quick-note-save">Save</button>
+      <button id="quick-note-cancel">✕</button>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
