@@ -1,6 +1,16 @@
 # macOS
 .DS_Store
 
+# Agentes / IA
+.opencode/
+.claude/
+AGENTS.md
+CLAUDE.md
+
+# Diseño / mockups
+claude-design/
+*.design-system.html
+
 # Node
 node_modules/
 dist/
