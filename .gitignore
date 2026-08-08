@@ -13,6 +13,9 @@ target/
 # Tauri
 gen/schemas/
 
+# Caché de modelos (fastembed/ONNX)
+.fastembed_cache/
+
 # Entorno / secretos
 .env
 .env.local
