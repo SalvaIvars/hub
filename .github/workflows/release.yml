@@ -17,10 +17,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - macos-latest
-          - windows-latest
-          - ubuntu-latest
+        include:
+          - platform: macos-latest
+            files: |
+              Lector.dmg
+              Lector-x64.dmg
+          - platform: windows-latest
+            files: |
+              Lector-Setup.msi
+              Lector-Setup.exe
+          - platform: ubuntu-latest
+            files: |
+              lector-amd64.deb
+              Lector.AppImage
 
     runs-on: ${{ matrix.platform }}
 
@@ -60,14 +69,14 @@ jobs:
         run: |
           rustup target add aarch64-apple-darwin
           npm run tauri build -- --target aarch64-apple-darwin --bundles dmg
-          mv target/release/bundle/dmg/*aarch64.dmg Lector.dmg
+          mv target/aarch64-apple-darwin/release/bundle/dmg/*.dmg Lector.dmg
 
       - name: Build macOS (x86_64)
         if: matrix.platform == 'macos-latest'
         run: |
           rustup target add x86_64-apple-darwin
           npm run tauri build -- --target x86_64-apple-darwin --bundles dmg
-          mv target/release/bundle/dmg/*x86_64.dmg Lector-x64.dmg
+          mv target/x86_64-apple-darwin/release/bundle/dmg/*.dmg Lector-x64.dmg
 
       - name: Build Windows
         if: matrix.platform == 'windows-latest'
@@ -90,10 +99,4 @@ jobs:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || '' }}
           generate_release_notes: true
           fail_on_unmatched_files: true
-          files: |
-            Lector.dmg
-            Lector-x64.dmg
-            Lector-Setup.msi
-            Lector-Setup.exe
-            lector-amd64.deb
-            Lector.AppImage
+          files: ${{ matrix.files }}
