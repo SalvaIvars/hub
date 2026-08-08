@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag (ej: v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - macos-latest
+          - windows-latest
+          - ubuntu-latest
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            patchelf
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS (arm64)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          rustup target add aarch64-apple-darwin
+          npm run tauri build -- --target aarch64-apple-darwin --bundles dmg
+          mv target/release/bundle/dmg/*aarch64.dmg Lector.dmg
+
+      - name: Build macOS (x86_64)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          rustup target add x86_64-apple-darwin
+          npm run tauri build -- --target x86_64-apple-darwin --bundles dmg
+          mv target/release/bundle/dmg/*x86_64.dmg Lector-x64.dmg
+
+      - name: Build Windows
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        run: |
+          npm run tauri build
+          mv target/release/bundle/msi/*.msi Lector-Setup.msi
+          mv target/release/bundle/nsis/*-setup.exe Lector-Setup.exe
+
+      - name: Build Linux
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          npm run tauri build -- --bundles deb appimage
+          mv target/release/bundle/deb/*.deb lector-amd64.deb
+          mv target/release/bundle/appimage/*.AppImage Lector.AppImage
+
+      - name: Upload release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || '' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            Lector.dmg
+            Lector-x64.dmg
+            Lector-Setup.msi
+            Lector-Setup.exe
+            lector-amd64.deb
+            Lector.AppImage
