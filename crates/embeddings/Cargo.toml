@@ -1,0 +1,11 @@
+[package]
+name = "reader-embeddings"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+fastembed = "5.17"
+async-trait.workspace = true
+thiserror.workspace = true
+tokio.workspace = true

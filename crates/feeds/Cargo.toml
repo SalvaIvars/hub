@@ -1,0 +1,11 @@
+[package]
+name = "reader-feeds"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+reader-domain = { path = "../domain" }
+feed-rs.workspace = true
+thiserror.workspace = true
+url.workspace = true

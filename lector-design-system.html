@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lector · Design system de referencia</title>
+<!--
+  DESIGN SYSTEM DE REFERENCIA de "Lector" (app Tauri 2 + React/TS).
+  Sube este archivo a Claude Design como import (raw upload / design system).
+  Contiene:
+    1) El CSS COMPLETO real de la app (src/styles/app.css), incluido el sistema
+       de tokens con los temas light / dark / sepia / system.
+    2) La estructura DOM fiel a los componentes React (App.tsx, Reader.tsx,
+       Settings.tsx) con LAS MISMAS clases, para que el rediseño mapee 1:1.
+  Cada bloque está anotado con el componente React que representa.
+  Cambia el tema con el botón ☀/🌙 o los botones de la parte inferior.
+-->
+<style>
+:root {
+  --bg: #faf9f7;
+  --bg-panel: #ffffff;
+  --bg-sidebar: #f1efe9;
+  --fg: #1f2328;
+  --fg-muted: #6a6f76;
+  --border: #e3e0d8;
+  --accent: #2f6fed;
+  --accent-soft: rgba(47, 111, 237, 0.12);
+  --danger: #c0392b;
+  --reader-bg: #ffffff;
+  --reader-fg: #22252a;
+  --reader-heading: #16181c;
+  --code-bg: #f4f4f2;
+  --radius: 8px;
+}
+
+:root[data-theme="dark"] {
+  --bg: #17181c;
+  --bg-panel: #1e2026;
+  --bg-sidebar: #141519;
+  --fg: #e6e6e6;
+  --fg-muted: #9aa0a8;
+  --border: #2b2e36;
+  --accent: #6a9bf5;
+  --accent-soft: rgba(106, 155, 245, 0.16);
+  --danger: #e06666;
+  --reader-bg: #1e2026;
+  --reader-fg: #d8dade;
+  --reader-heading: #f0f1f3;
+  --code-bg: #262a32;
+}
+
+:root[data-theme="sepia"] {
+  --bg: #f4ecd8;
+  --bg-panel: #fdf8ec;
+  --bg-sidebar: #e8ddc2;
+  --fg: #433422;
+  --fg-muted: #7a6a50;
+  --border: #d9cbaa;
+  --accent: #9a6b2f;
+  --accent-soft: rgba(154, 107, 47, 0.14);
+  --danger: #a0402f;
+  --reader-bg: #fdf8ec;
+  --reader-fg: #3b2f1e;
+  --reader-heading: #2a2013;
+  --code-bg: #f1e6cc;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+}
+
+.app { height: 100%; }
+
+.panel-group { height: 100%; }
+
+.layout-pane { min-width: 0; overflow: hidden; height: 100%; }
+
+.layout-pane > .sidebar,
+.layout-pane > .article-list-pane,
+.layout-pane > .reader-pane { height: 100%; }
+
+.panel-resize-handle {
+  position: relative;
+  width: 5px;
+  margin-left: -3px;
+  margin-right: -2px;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+  z-index: 5;
+}
+
+.panel-resize-handle::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--border);
+}
+
+.panel-resize-handle:hover::before,
+.panel-resize-handle:active::before {
+  background: var(--accent);
+  width: 2px;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.add-form { display: flex; gap: 6px; margin-bottom: 12px; }
+
+.add-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--fg);
+  font-size: 13px;
+}
+
+.add-form button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.nav { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+
+.nav button {
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.nav button:hover { background: var(--accent-soft); }
+
+.nav button.is-selected { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+.section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  margin: 8px 8px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-label h2 { font-size: 11px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 0.06em; }
+
+.section-actions { display: flex; gap: 2px; }
+
+.icon-btn { border: none; background: transparent; color: var(--fg-muted); cursor: pointer; padding: 2px 6px; font-size: 13px; }
+.icon-btn:hover:not(:disabled) { color: var(--accent); }
+.icon-btn:disabled { opacity: 0.4; cursor: default; }
+
+.category-folder { display: block; }
+.source-list li.category-folder { display: block; }
+
+.category-header { display: flex; align-items: center; gap: 2px; border-radius: var(--radius); margin: 2px 0; }
+.category-header.is-selected { background: var(--accent-soft); }
+
+.category-open-btn {
+  flex: 1; min-width: 0; text-align: left; padding: 6px 10px; border: none;
+  border-radius: var(--radius); background: transparent; color: var(--fg); cursor: pointer;
+  font-size: 12px; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+}
+.category-open-btn:hover { background: var(--accent-soft); }
+
+.category-actions { display: flex; align-items: center; gap: 2px; }
+.category-header.is-selected .category-open-btn { color: var(--accent); font-weight: 600; }
+
+.category-label {
+  flex: 1; min-width: 0; padding: 6px 10px; font-size: 12px; display: flex;
+  align-items: center; justify-content: space-between; gap: 6px; color: var(--fg);
+}
+
+.category-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.category-count { flex-shrink: 0; font-size: 11px; color: var(--fg-muted); font-weight: 400; }
+
+.collapse-btn { border: none; background: transparent; color: var(--fg-muted); cursor: pointer; padding: 4px 8px; font-size: 11px; }
+.collapse-btn:hover { color: var(--accent); }
+
+.folder-sources {
+  list-style: none; margin: 0 0 4px; padding: 0 0 0 10px;
+  display: flex; flex-direction: column; gap: 2px; border-left: 1px solid var(--border);
+}
+.folder-sources li { display: flex; align-items: stretch; gap: 4px; }
+
+.search-icon { margin-right: 4px; font-size: 11px; opacity: 0.8; }
+.category-btn { border: none; background: transparent; color: var(--fg-muted); cursor: pointer; padding: 0 6px; font-size: 12px; }
+.category-btn:hover { color: var(--accent); }
+
+.smart-feed-list {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px;
+}
+.smart-feed-list li { display: flex; align-items: stretch; gap: 4px; }
+
+.smart-feed-item {
+  flex: 1; min-width: 0; text-align: left; padding: 8px 10px; border: none;
+  border-radius: var(--radius); background: transparent; color: var(--fg); cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.smart-feed-item:hover { background: var(--accent-soft); }
+.smart-feed-item.is-selected { background: var(--accent-soft); }
+
+.smart-feed-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.smart-feed-count { font-size: 11px; color: var(--fg-muted); }
+
+.smart-feed-form {
+  display: flex; flex-direction: column; gap: 6px; padding: 8px; margin: 0 0 8px;
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.smart-feed-form input {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-sidebar); color: var(--fg); font-size: 13px;
+}
+.smart-feed-form input:focus { border-color: var(--accent); outline: none; }
+.smart-feed-form-actions { display: flex; gap: 6px; }
+.smart-feed-form-actions button { flex: 1; padding: 6px 10px; border: none; border-radius: var(--radius); font-size: 12px; cursor: pointer; }
+.smart-feed-form-actions button:first-child { background: var(--accent); color: #fff; font-weight: 600; }
+.smart-feed-form-actions button:last-child { background: transparent; color: var(--fg-muted); }
+.smart-feed-form .modal-field { margin: 0; }
+.smart-feed-form select {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-sidebar); color: var(--fg); font-size: 13px;
+}
+
+.smart-feed-warning {
+  font-size: 11px; color: var(--fg-muted); background: rgba(230, 167, 0, 0.08);
+  border: 1px solid rgba(230, 167, 0, 0.25); border-radius: var(--radius);
+  padding: 6px 8px; line-height: 1.4; margin-bottom: 8px;
+}
+
+.source-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.source-list li { display: flex; align-items: stretch; gap: 4px; }
+
+.source-item {
+  flex: 1; min-width: 0; text-align: left; padding: 8px 10px; border: none;
+  border-radius: var(--radius); background: transparent; color: var(--fg); cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.source-item:hover { background: var(--accent-soft); }
+.source-item.is-selected { background: var(--accent-soft); }
+.source-item.has-error { color: var(--danger); }
+
+.error-indicator { margin-right: 4px; font-size: 11px; }
+.source-title { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.source-count { font-size: 11px; color: var(--fg-muted); }
+
+.refresh-btn { border: none; background: transparent; color: var(--fg-muted); cursor: pointer; padding: 0 6px; font-size: 14px; }
+.refresh-btn:hover:not(:disabled) { color: var(--accent); }
+.refresh-btn:disabled { opacity: 0.4; cursor: default; }
+
+.delete-btn { border: none; background: transparent; color: var(--fg-muted); cursor: pointer; padding: 0 6px; font-size: 12px; }
+.delete-btn:hover { color: var(--danger); }
+
+.delete-confirm { display: flex; align-items: center; gap: 4px; }
+.delete-confirm-yes {
+  border: 1px solid var(--danger); border-radius: var(--radius); background: var(--danger);
+  color: #fff; font-size: 11px; padding: 4px 8px; cursor: pointer; white-space: nowrap;
+}
+.delete-confirm-yes:hover { opacity: 0.9; }
+
+.rename-input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--accent); border-radius: var(--radius); background: var(--bg-panel); color: var(--fg); font-size: 13px; }
+.category-input { max-width: 160px; }
+
+.empty-hint { color: var(--fg-muted); font-size: 12px; padding: 12px 8px; list-style: none; }
+
+/* ---------- Lista de artículos ---------- */
+.article-list-pane {
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.list-toolbar { padding: 12px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; }
+
+.mark-all-btn {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-sidebar); color: var(--fg); font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.mark-all-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.filter-group { display: flex; gap: 4px; }
+.filter-btn {
+  padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-sidebar); color: var(--fg-muted); font-size: 11px; cursor: pointer; white-space: nowrap;
+}
+.filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+.filter-btn.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.search-input {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-sidebar); color: var(--fg); font-size: 13px;
+}
+
+.article-list { list-style: none; margin: 0; padding: 0; flex: 1; overflow-y: auto; }
+
+.article-item {
+  width: 100%; text-align: left; padding: 12px 14px; border: none;
+  border-bottom: 1px solid var(--border); background: transparent; color: var(--fg);
+  cursor: pointer; display: flex; flex-direction: column; gap: 4px;
+}
+.article-item:hover { background: var(--accent-soft); }
+.article-item.is-selected { background: var(--accent-soft); border-left: 3px solid var(--accent); }
+.article-item.is-read .article-item-title { color: var(--fg-muted); }
+
+.article-item-title { font-size: 14px; font-weight: 500; line-height: 1.3; }
+.star { color: #e6a700; }
+.embedding-indicator { font-size: 12px; margin-right: 2px; opacity: 0.7; }
+
+.article-item-sub { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--fg-muted); }
+.snippet { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.snippet mark { background: var(--accent-soft); color: var(--accent); border-radius: 2px; }
+
+/* ---------- Lector ---------- */
+.reader-pane { position: relative; background: var(--reader-bg); overflow-y: auto; }
+
+.reader { max-width: var(--reader-width, 760px); margin: 0 auto; padding: 48px 40px 80px; }
+
+.reader-title { font-size: 34px; line-height: 1.2; margin: 0 0 12px; color: var(--reader-heading); }
+
+.reader-meta { display: flex; gap: 14px; font-size: 13px; color: var(--fg-muted); margin-bottom: 20px; flex-wrap: wrap; }
+
+.reader-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+
+.action-btn {
+  padding: 6px 12px; font-size: 12px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg-panel); color: var(--fg); cursor: pointer;
+}
+.action-btn:hover { border-color: var(--accent); color: var(--accent); }
+.action-btn.is-active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.action-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+.action-btn:disabled { opacity: 0.5; cursor: default; }
+
+.reader-fallback { font-size: var(--reader-font-size, 17px); line-height: var(--reader-line-height, 1.7); white-space: pre-wrap; }
+.reader-hint { color: var(--fg-muted); font-size: 14px; margin-top: 24px; }
+.reader-empty { color: var(--fg-muted); padding: 40px 0; text-align: center; }
+.reader-placeholder { height: 100%; display: flex; align-items: center; justify-content: center; color: var(--fg-muted); font-size: 14px; }
+
+/* ---------- Tipografía del contenido extraído ---------- */
+.reader-content {
+  font-family: var(--reader-font-family, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif);
+  font-size: var(--reader-font-size, 19px);
+  line-height: var(--reader-line-height, 1.7);
+  color: var(--reader-fg);
+  word-wrap: break-word;
+}
+.reader-content p { margin: 0 0 1.3em; }
+.reader-content h1, .reader-content h2, .reader-content h3, .reader-content h4 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--reader-heading); line-height: 1.25; margin: 1.6em 0 0.6em;
+}
+.reader-content h1 { font-size: 1.6em; }
+.reader-content h2 { font-size: 1.35em; }
+.reader-content h3 { font-size: 1.15em; }
+.reader-content a { color: var(--accent); }
+.reader-content img { max-width: 100%; height: auto; border-radius: 6px; }
+.reader-content blockquote { margin: 1.4em 0; padding: 0.4em 1.2em; border-left: 3px solid var(--accent); color: var(--fg-muted); font-style: italic; }
+.reader-content pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-size: 0.85em; font-family: "SF Mono", Menlo, Consolas, monospace; }
+.reader-content code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.88em; font-family: "SF Mono", Menlo, Consolas, monospace; }
+.reader-content pre code { background: transparent; padding: 0; }
+.reader-content ul, .reader-content ol { margin: 0 0 1.3em; padding-left: 1.6em; }
+.reader-content li { margin-bottom: 0.4em; }
+.reader-content table { border-collapse: collapse; width: 100%; margin: 1.4em 0; font-size: 0.9em; }
+.reader-content th, .reader-content td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+.reader-content iframe { max-width: 100%; }
+
+.image-placeholder { padding: 20px; background: var(--bg-sidebar); border: 1px dashed var(--border); border-radius: var(--radius); text-align: center; color: var(--fg-muted); font-size: 13px; margin: 1em 0; }
+
+/* ---------- Skip link (accesibilidad) ---------- */
+.skip-link { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; z-index: 200; }
+.skip-link:focus { position: fixed; top: 10px; left: 10px; width: auto; height: auto; padding: 10px 16px; background: var(--accent); color: #fff; border-radius: var(--radius); font-size: 13px; text-decoration: none; overflow: visible; }
+
+/* ---------- Avisos y misc ---------- */
+.notice { position: fixed; top: 14px; right: 14px; z-index: 50; max-width: 420px; padding: 10px 14px; border-radius: var(--radius); font-size: 13px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18); cursor: pointer; }
+.notice.ok { background: #e7f6e7; color: #1d6b2e; border: 1px solid #bfe6c4; }
+.notice.err { background: #fdeaea; color: #a2281f; border: 1px solid #f3c1bc; }
+:root[data-theme="dark"] .notice.ok { background: #17331d; color: #8fd49b; border-color: #2c5234; }
+:root[data-theme="dark"] .notice.err { background: #3a1d1c; color: #f0a09a; border-color: #57302d; }
+
+.theme-toggle { position: fixed; bottom: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-panel); font-size: 18px; cursor: pointer; z-index: 40; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }
+
+/* ---------- Barra de disposición del layout ---------- */
+.layout-bar { position: fixed; bottom: 16px; left: 16px; z-index: 40; display: flex; align-items: center; gap: 4px; padding: 4px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 999px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }
+.layout-btn { border: none; background: transparent; color: var(--fg-muted); font-size: 11px; padding: 5px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.layout-btn:hover { color: var(--fg); }
+.layout-btn.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.layout-bar-sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 2px; }
+
+/* ---------- Modal de configuración ---------- */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { width: 340px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25); }
+.modal h3 { margin: 0 0 16px; font-size: 15px; }
+.modal-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; margin-bottom: 18px; }
+.modal-field input { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-sidebar); color: var(--fg); font-size: 13px; }
+.range-field { display: flex; align-items: center; gap: 10px; }
+.range-field input[type="range"] { flex: 1; accent-color: var(--accent); }
+.range-value { min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; color: var(--fg-muted); }
+.field-hint { font-size: 11px; color: var(--fg-muted); line-height: 1.4; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.modal-actions button { padding: 8px 14px; border-radius: var(--radius); font-size: 13px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-panel); color: var(--fg); }
+.modal-actions .modal-save { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.modal-actions .modal-save:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------- Panel de configuración ---------- */
+.settings-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.settings-panel { width: 520px; max-width: calc(100vw - 32px); background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; max-height: min(560px, calc(100vh - 32px)); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25); }
+.settings-tabs { display: flex; gap: 4px; padding: 12px 12px 0; border-bottom: 1px solid var(--border); }
+.settings-tab { padding: 8px 12px; border: none; border-bottom: 2px solid transparent; background: transparent; color: var(--fg-muted); font-size: 13px; cursor: pointer; }
+.settings-tab:hover { color: var(--fg); }
+.settings-tab.is-selected { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.settings-body { flex: 1; overflow-y: auto; padding: 16px 16px 8px; }
+.settings-section { display: flex; flex-direction: column; gap: 16px; }
+.settings-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--fg); }
+.settings-field input[type="text"], .settings-field input[type="number"], .settings-field select { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-sidebar); color: var(--fg); font-size: 13px; }
+.settings-field input:focus, .settings-field select:focus { border-color: var(--accent); outline: none; }
+.settings-toggle { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.settings-toggle small { display: block; font-size: 11px; color: var(--fg-muted); margin-top: 4px; font-weight: 400; }
+.settings-toggle input[type="checkbox"] { margin-top: 2px; accent-color: var(--accent); width: 16px; height: 16px; }
+.settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.settings-btn { flex: 1; min-width: 160px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-sidebar); color: var(--fg); font-size: 13px; cursor: pointer; }
+.settings-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.settings-btn:disabled { opacity: 0.5; cursor: default; }
+.settings-error { color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="panel-group" style="display:flex; height:100%;">
+
+    <!-- ============ SIDEBAR (componente App.tsx) ============ -->
+    <div class="layout-pane" style="width:22%; flex-shrink:0;">
+      <aside class="sidebar" role="navigation" aria-label="Navegación principal">
+        <!-- add-form: añadir URL -->
+        <form class="add-form">
+          <input placeholder="Pega un URL…" aria-label="Añadir URL" />
+          <button type="submit">Añadir</button>
+        </form>
+
+        <!-- nav: vistas globales -->
+        <nav class="nav" aria-label="Vistas">
+          <button class="is-selected" aria-current="page">Todos</button>
+          <button>Sin leer</button>
+          <button>Destacados</button>
+          <button>7 días</button>
+          <button>Artículos sueltos</button>
+        </nav>
+
+        <!-- Sección "Búsquedas guardadas" (smart feeds) -->
+        <div class="section-label">
+          <h2>Búsquedas guardadas</h2>
+          <div class="section-actions"><button class="icon-btn" title="Crear búsqueda guardada">+</button></div>
+        </div>
+        <ul class="smart-feed-list">
+          <li>
+            <button class="smart-feed-item">
+              <span class="smart-feed-name"><span class="search-icon">🔍</span>Rust async</span>
+              <span class="smart-feed-count">3 sin leer</span>
+            </button>
+          </li>
+          <li>
+            <button class="smart-feed-item">
+              <span class="smart-feed-name"><span class="search-icon">🧠</span>Fusión nuclear</span>
+              <span class="smart-feed-count">12</span>
+            </button>
+          </li>
+          <li>
+            <button class="smart-feed-item">
+              <span class="smart-feed-name"><span class="search-icon">🔀</span>Tauri 2</span>
+              <span class="smart-feed-count">1 sin leer</span>
+            </button>
+          </li>
+        </ul>
+
+        <!-- Sección "Fuentes" con categorías (carpetas) -->
+        <div class="section-label">
+          <h2>Fuentes</h2>
+          <div class="section-actions">
+            <button class="icon-btn" title="Añadir fuente">+</button>
+            <button class="icon-btn" title="Actualizar todo">↻</button>
+          </div>
+        </div>
+        <ul class="source-list">
+          <li class="category-folder">
+            <div class="category-header is-selected">
+              <button class="category-open-btn">
+                <span class="category-name">Tecnología</span>
+                <span class="category-count">24 sin leer</span>
+              </button>
+              <div class="category-actions"><button class="collapse-btn">▾</button></div>
+            </div>
+            <ul class="folder-sources">
+              <li>
+                <button class="source-item">
+                  <span class="source-title">The Verge</span>
+                  <span class="source-count">9 sin leer</span>
+                </button>
+              </li>
+              <li>
+                <button class="source-item">
+                  <span class="source-title">Hacker News</span>
+                  <span class="source-count">15 sin leer</span>
+                </button>
+              </li>
+            </ul>
+          </li>
+          <li class="category-folder">
+            <div class="category-header">
+              <button class="category-open-btn">
+                <span class="category-name">Prensa</span>
+                <span class="category-count">6 sin leer</span>
+              </button>
+              <div class="category-actions"><button class="collapse-btn">▸</button></div>
+            </div>
+          </li>
+          <li>
+            <button class="source-item has-error">
+              <span class="source-title"><span class="error-indicator">⚠</span>Blog sin feed</span>
+              <span class="source-count">0</span>
+            </button>
+          </li>
+          <li>
+            <button class="source-item">
+              <span class="source-title">Anime News Network</span>
+              <span class="source-count">2 sin leer</span>
+            </button>
+          </li>
+        </ul>
+      </aside>
+    </div>
+
+    <div class="panel-resize-handle" role="separator"></div>
+
+    <!-- ============ PANEL DE LISTA (componente App.tsx) ============ -->
+    <div class="layout-pane" style="width:30%; flex-shrink:0;">
+      <section class="article-list-pane" aria-label="Lista de artículos">
+        <div class="list-toolbar">
+          <input class="search-input" placeholder="Buscar en artículos…" aria-label="Buscar" />
+          <button class="mark-all-btn">Marcar todo leído</button>
+        </div>
+        <ul class="article-list" role="listbox" aria-label="Artículos">
+          <li role="option" aria-selected="true">
+            <button class="article-item is-selected">
+              <div class="article-item-title">Anuncian el plan de fusión nuclear europeo con objetivos a 2035</div>
+              <div class="article-item-sub">
+                <span>El País · Tecnología</span>
+                <span class="snippet">La Comisión Europea presentó esta mañana la hoja de ruta para el <mark>reactor</mark> de demostración…</span>
+              </div>
+            </button>
+          </li>
+          <li role="option" aria-selected="false">
+            <button class="article-item">
+              <div class="article-item-title">★ Rust 1.85 trae estabilidad a los genéricos async</div>
+              <div class="article-item-sub">
+                <span>The Verge</span>
+                <span class="snippet">El equipo de Rust publica la nueva edición con mejoras en el compilador y en las…</span>
+              </div>
+            </button>
+          </li>
+          <li role="option" aria-selected="false">
+            <button class="article-item is-read">
+              <div class="article-item-title">🧠 Por qué el lector de feeds vuelve a tener sentido en 2026</div>
+              <div class="article-item-sub">
+                <span>Xataka</span>
+                <span class="snippet">Tras años de algoritmos, los lectores RSS recuperan protagonismo…</span>
+              </div>
+            </button>
+          </li>
+          <li role="option" aria-selected="false">
+            <button class="article-item is-read">
+              <div class="article-item-title">El estado del ecosistema Tauri en su versión 2</div>
+              <div class="article-item-sub">
+                <span>Hacker News</span>
+              </div>
+            </button>
+          </li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="panel-resize-handle" role="separator"></div>
+
+    <!-- ============ PANEL LECTOR (componente Reader.tsx) ============ -->
+    <div class="layout-pane" style="flex:1;">
+      <main class="reader-pane" id="reader-pane" aria-label="Lector">
+        <div class="notice ok">Fuente añadida: The Verge</div>
+        <article class="reader">
+          <header class="reader-header">
+            <h1 class="reader-title" tabindex="-1">Anuncian el plan de fusión nuclear europeo con objetivos a 2035</h1>
+            <div class="reader-meta">
+              <span>El País</span>
+              <span>María Rodríguez</span>
+              <span>3 ago 2026</span>
+            </div>
+            <div class="reader-actions">
+              <button class="action-btn" aria-pressed="false">Marcar leído</button>
+              <button class="action-btn">☆ Destacar</button>
+              <button class="action-btn">Extraer contenido completo</button>
+              <button class="action-btn">Abrir original</button>
+              <button class="action-btn">Regenerar embedding</button>
+              <button class="action-btn danger">Borrar</button>
+            </div>
+          </header>
+          <div class="reader-content">
+            <p>
+              La Comisión Europea ha presentado hoy la hoja de ruta definitiva para el
+              programa de fusión nuclear, con el objetivo de contar con un reactor de
+              demostración operativo antes de 2035. El plan combina financiación pública
+              con acuerdos con empresas privadas del sector.
+            </p>
+            <p>
+              Los primeros resultados del proyecto experimental, publicado en
+              <em>Nature</em>, apuntan a que el confinamiento magnético con superconductores
+              de alta temperatura reduce de forma significativa el coste por vatio generado.
+            </p>
+            <blockquote>
+              «Estamos ante un punto de inflexión: la fusión ya no es ciencia ficción,
+              sino una cuestión de ingeniería y financiación», afirmó la comisaria.
+            </blockquote>
+            <h2>El papel de los reactores privados</h2>
+            <p>
+              Varias startups europeas han cerrado rondas de financiación récord en los
+              últimos meses. El consorcio público-privado espera validar el diseño del
+              <code>tokamak</code> compacto antes de 2028.
+            </p>
+            <pre><code>fn main() {
+    let tokamak = Tokamak::compact(120_000_000.0);
+    tokamak.ignite().await?;
+}</code></pre>
+            <p>
+              Si el calendario se cumple, la primera conexión a la red podría llegar a
+              principios de la próxima década, marcando el inicio de la era de la energía
+              de fusión comercial.
+            </p>
+          </div>
+        </article>
+      </main>
+    </div>
+
+  </div>
+</div>
+
+<!-- Barra de layout + toggle de tema (iguales que en la app real) -->
+<div class="layout-bar" role="toolbar" aria-label="Disposición del layout">
+  <button class="layout-btn is-active" title="Tres columnas (atajo 1)">3 col</button>
+  <button class="layout-btn" title="Lista + lector (atajo 2)">2 col</button>
+  <button class="layout-btn" title="Modo lectura: solo el artículo (F)">Lectura</button>
+  <button class="layout-btn" title="Solo lista (atajo 3)">Lista</button>
+  <span class="layout-bar-sep"></span>
+  <button class="layout-btn" title="Mostrar sidebar (B)">Sidebar</button>
+</div>
+<button class="theme-toggle" id="theme-toggle" title="Cambiar tema">☀</button>
+
+<script>
+  var themes = ["light", "dark", "sepia"];
+  var i = 0;
+  var icons = { light: "☀", dark: "🌙", sepia: "🕯" };
+  var btn = document.getElementById("theme-toggle");
+  btn.addEventListener("click", function () {
+    i = (i + 1) % themes.length;
+    document.documentElement.setAttribute("data-theme", themes[i]);
+    btn.textContent = icons[themes[i]];
+  });
+</script>
+</body>
+</html>

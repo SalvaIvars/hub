@@ -1,0 +1,12 @@
+[package]
+name = "reader-extractor"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+reader-domain = { path = "../domain" }
+rs-trafilatura.workspace = true
+thiserror.workspace = true
+url.workspace = true
+ammonia = "4"

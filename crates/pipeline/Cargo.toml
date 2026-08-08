@@ -1,0 +1,20 @@
+[package]
+name = "reader-pipeline"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+reader-domain = { path = "../domain" }
+reader-extractor = { path = "../extractor" }
+reader-feeds = { path = "../feeds" }
+reader-storage = { path = "../storage" }
+reqwest.workspace = true
+tokio.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+url.workspace = true
+async-trait.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

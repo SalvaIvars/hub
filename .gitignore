@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+dist/
+*.log
+
+# Rust
+target/
+**/*.rs.bk
+
+# Tauri
+gen/schemas/
+
+# Entorno / secretos
+.env
+.env.local
+.env.*.local
