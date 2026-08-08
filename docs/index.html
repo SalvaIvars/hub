@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const stored = localStorage.getItem("lector:theme");
+      const mode = stored === "light" || stored === "dark" ? stored : "system";
+      const theme = mode === "system"
+        ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+        : mode;
+      root.dataset.theme = theme;
+      root.style.colorScheme = theme;
+    })();
+  </script>
+  <title>Lector — A calm, local feed reader</title>
+  <meta name="description" content="A desktop feed reader. RSS, Atom and JSON feeds, local full-text search and semantic smart feeds. No cloud, no account, no tracking." />
+  <meta property="og:title" content="Lector — A calm, local feed reader" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://salvaivars.github.io/hub/" />
+  <meta property="og:description" content="A desktop feed reader. RSS, Atom and JSON feeds, local full-text search and semantic smart feeds. No cloud, no account, no tracking." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Lector — A calm, local feed reader" />
+  <meta name="twitter:description" content="A desktop feed reader. RSS, Atom and JSON feeds, local search and semantic smart feeds." />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="#top">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="4" cy="20" r="2" fill="currentColor" />
+        <path d="M4 11a9 9 0 0 1 9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        <path d="M4 4a16 16 0 0 1 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <span>Lector</span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#download">Download</a>
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screens</a>
+      <a href="#about">About</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-ghost" href="https://github.com/SalvaIvars/hub" target="_blank" rel="noopener">GitHub</a>
+      <button class="btn btn-ghost theme-toggle" type="button" data-theme-toggle aria-label="Toggle theme">
+        <span class="theme-icon theme-icon-dark">☾</span>
+        <span class="theme-icon theme-icon-light">☀</span>
+      </button>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <p class="kicker">A desktop feed reader · Tauri + Rust</p>
+      <h1 class="hero-title">
+        There are many feed readers.<br />
+        <em>But this one is yours.</em>
+      </h1>
+      <p class="lede">
+        Lector is a calm RSS/Atom/JSON reader for your desktop. Feeds, saved
+        searches and smart feeds live in a local database on your machine —
+        nothing leaves it. No cloud, no account, no tracking.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="https://github.com/SalvaIvars/hub/releases" target="_blank" rel="noopener">Download for macOS</a>
+        <a class="btn btn-secondary" href="https://github.com/SalvaIvars/hub/releases" target="_blank" rel="noopener">All releases</a>
+      </div>
+      <p class="mono-note">$ curl -fsSL github.com/SalvaIvars/hub/releases</p>
+    </section>
+
+    <section id="download" class="section">
+      <h2 class="section-title"><span class="section-num">##</span> Download</h2>
+      <p class="section-lede">
+        Binaries are published as GitHub Releases. Pick your platform —
+        installers land in the releases feed as soon as they are built.
+      </p>
+
+      <div class="terminal" data-terminal>
+        <div class="terminal-bar">
+          <span class="dot dot-red"></span>
+          <span class="dot dot-yellow"></span>
+          <span class="dot dot-green"></span>
+          <div class="terminal-tabs" role="tablist" aria-label="Platform">
+            <button class="term-tab is-active" role="tab" aria-selected="true" data-tab="macos">macOS</button>
+            <button class="term-tab" role="tab" aria-selected="false" data-tab="windows">Windows</button>
+            <button class="term-tab" role="tab" aria-selected="false" data-tab="linux">Linux</button>
+            <button class="term-tab" role="tab" aria-selected="false" data-tab="source">From source</button>
+          </div>
+        </div>
+        <div class="terminal-body">
+          <div class="term-pane is-active" data-pane="macos">
+            <pre>$ curl -fsSL https://github.com/SalvaIvars/hub/releases/latest/download/Lector.dmg -o Lector.dmg
+$ open Lector.dmg</pre>
+            <a class="btn btn-primary btn-sm" href="https://github.com/SalvaIvars/hub/releases" target="_blank" rel="noopener">Download .dmg →</a>
+          </div>
+          <div class="term-pane" data-pane="windows">
+            <pre>&gt; Invoke-WebRequest https://github.com/SalvaIvars/hub/releases/latest/download/Lector-Setup.msi -OutFile Lector.msi
+&gt; .\Lector.msi</pre>
+            <a class="btn btn-primary btn-sm" href="https://github.com/SalvaIvars/hub/releases" target="_blank" rel="noopener">Download .msi →</a>
+          </div>
+          <div class="term-pane" data-pane="linux">
+            <pre>$ wget https://github.com/SalvaIvars/hub/releases/latest/download/lector-amd64.deb
+$ sudo apt install ./lector-amd64.deb</pre>
+            <a class="btn btn-primary btn-sm" href="https://github.com/SalvaIvars/hub/releases" target="_blank" rel="noopener">Download .deb →</a>
+          </div>
+          <div class="term-pane" data-pane="source">
+            <pre>$ git clone https://github.com/SalvaIvars/hub.git
+$ cd hub
+$ npm run tauri dev</pre>
+            <a class="btn btn-ghost btn-sm" href="https://github.com/SalvaIvars/hub" target="_blank" rel="noopener">View source on GitHub →</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <h2 class="section-title"><span class="section-num">#</span> Why Lector?</h2>
+      <div class="features-grid">
+        <article class="card">
+          <h3>Feeds, the usual way</h3>
+          <p>RSS, Atom and JSON feeds. Paste a URL and Lector discovers the feed for you — no hunting for the orange icon.</p>
+        </article>
+        <article class="card">
+          <h3>Clean reading</h3>
+          <p>Posts are stored bare; full article content is extracted on demand, so the reader shows you the text, not the clutter.</p>
+        </article>
+        <article class="card">
+          <h3>Local search</h3>
+          <p>Full-text search over everything you've saved, powered by SQLite FTS5. Instant, offline, private.</p>
+        </article>
+        <article class="card">
+          <h3>Smart feeds</h3>
+          <p>Saved searches that understand meaning. Semantic embeddings run locally on ONNX — no API keys, no network required.</p>
+        </article>
+        <article class="card">
+          <h3>Folders &amp; categories</h3>
+          <p>Group sources into collapsible folders and read every source in a category at once.</p>
+        </article>
+        <article class="card">
+          <h3>Themes that match you</h3>
+          <p>Light, dark and sepia. Pick a font, size and line height — the reader is yours to shape.</p>
+        </article>
+        <article class="card">
+          <h3>Move in, move out</h3>
+          <p>Import and export your subscriptions with OPML. Your library is never locked in.</p>
+        </article>
+        <article class="card">
+          <h3>Keyboard first</h3>
+          <p>Navigate the whole app from the keyboard: mark, star, open, extract. Speed reading without a mouse.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="screenshots" class="section">
+      <h2 class="section-title"><span class="section-num">*</span> Screens</h2>
+      <figure class="shot">
+        <a href="screenshots/fig1-light.png" target="_blank" rel="noopener">
+          <img src="screenshots/fig1-light.png" alt="Lector in light theme, showing the reading list with the sources sidebar" loading="lazy" />
+        </a>
+        <figcaption>Fig. 01 | Light theme — the reading list with sources, categories and smart feeds</figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="screenshots/fig2-dark.png" target="_blank" rel="noopener">
+          <img src="screenshots/fig2-dark.png" alt="Lector in dark theme showing an extracted article in the reader" loading="lazy" />
+        </a>
+        <figcaption>Fig. 02 | Dark theme — an article with extracted content, in the reader</figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="screenshots/fig3-sepia.png" target="_blank" rel="noopener">
+          <img src="screenshots/fig3-sepia.png" alt="Lector in sepia theme with the settings panel open" loading="lazy" />
+        </a>
+        <figcaption>Fig. 03 | Sepia theme — settings and appearance controls</figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="screenshots/fig4-smartfeed.png" target="_blank" rel="noopener">
+          <img src="screenshots/fig4-smartfeed.png" alt="Lector showing a semantic smart feed of saved searches" loading="lazy" />
+        </a>
+        <figcaption>Fig. 04 | Focus mode — the calm reader, at full attention</figcaption>
+      </figure>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title"><span class="section-num">!</span> What Lector doesn't do</h2>
+      <div class="not-grid">
+        <div class="not-item">
+          <span class="not-mark">×</span>
+          <p><strong>No cloud.</strong> Your library lives in a local SQLite database on your machine.</p>
+        </div>
+        <div class="not-item">
+          <span class="not-mark">×</span>
+          <p><strong>No account.</strong> There is nothing to sign up for and no one to sign in to.</p>
+        </div>
+        <div class="not-item">
+          <span class="not-mark">×</span>
+          <p><strong>No tracking.</strong> No telemetry, no analytics, no spy pixels. Nothing phones home.</p>
+        </div>
+        <div class="not-item">
+          <span class="not-mark">×</span>
+          <p><strong>No API keys.</strong> Semantic smart feeds run on a local ONNX model — offline by design.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="about" class="section">
+      <h2 class="section-title"><span class="section-num">@</span> About</h2>
+      <div class="about">
+        <p>
+          Lector is built by <a href="https://github.com/SalvaIvars" target="_blank" rel="noopener">Salva Ivars</a>,
+          a developer who kept losing track of the web he actually wanted to read.
+          It started as a personal tool — a reader that is fast, local and quiet —
+          and grew into the app you see here.
+        </p>
+        <p>
+          Built with <a href="https://tauri.app" target="_blank" rel="noopener">Tauri</a> and Rust on a hexagonal
+          architecture, with a React frontend. Open source under the MIT license:
+          <a href="https://github.com/SalvaIvars/hub" target="_blank" rel="noopener">github.com/SalvaIvars/hub</a>.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <span>Lector · MIT License</span>
+      <nav class="footer-links" aria-label="External links">
+        <a href="https://github.com/SalvaIvars/hub" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/SalvaIvars/hub/releases" target="_blank" rel="noopener">Releases</a>
+        <a href="#top">Back to top ↑</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
