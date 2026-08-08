@@ -7,6 +7,7 @@ import { Reader } from "./components/Reader";
 import { Settings } from "./components/Settings";
 import { useKeyboardNavigation } from "./hooks/useKeyboardNavigation";
 import { useAutoHideScrollbars } from "./hooks/useAutoHideScrollbars";
+import { useAutoExtractArticle } from "./hooks/useAutoExtractArticle";
 import { useExternalLinks } from "./hooks/useExternalLinks";
 import type {
   Article,
@@ -119,12 +120,13 @@ export default function App() {
   const [embeddingSingleBusy, setEmbeddingSingleBusy] = useState(false);
   const [categoryFormId, setCategoryFormId] = useState<number | null>(null);
   const [categoryValue, setCategoryValue] = useState("");
-  const [extracting, setExtracting] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [addUrlValue, setAddUrlValue] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [intervalMinutes, setIntervalMinutes] = useState(30);
   const [similarityThreshold, setSimilarityThreshold] = useState(0.7);
+  const [purgeDays, setPurgeDays] = useState(0);
+  const [purging, setPurging] = useState(false);
   const [embeddingStatus, setEmbeddingStatus] = useState<[number, number] | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const currentIdRef = useRef<number | null>(null);
@@ -226,6 +228,13 @@ export default function App() {
     }
   }, [query, view]);
 
+  const { extracting, extract } = useAutoExtractArticle({
+    getCurrentId: () => currentIdRef.current,
+    onResult: setCurrent,
+    onRefreshList: reloadArticles,
+    onNotice: setNotice,
+  });
+
   useEffect(() => {
     void reloadSources();
   }, [reloadSources]);
@@ -251,6 +260,7 @@ export default function App() {
     let unlisten: (() => void) | undefined;
     let unlistenBackfillDone: (() => void) | undefined;
     let unlistenBackfillError: (() => void) | undefined;
+    let unlistenPurged: (() => void) | undefined;
     listen<number>("sources-refreshed", (e) => {
       const added = e.payload;
       if (added > 0) {
@@ -281,10 +291,22 @@ export default function App() {
         unlistenBackfillError = fn;
       })
       .catch(() => {});
+    listen<number>("content-purged", (e) => {
+      const n = e.payload;
+      if (n > 0) {
+        setNotice({ kind: "ok", text: `Limpieza automática: contenido vaciado en ${n} artículos` });
+        void reloadArticles();
+      }
+    })
+      .then((fn) => {
+        unlistenPurged = fn;
+      })
+      .catch(() => {});
     return () => {
       unlisten?.();
       unlistenBackfillDone?.();
       unlistenBackfillError?.();
+      unlistenPurged?.();
     };
   }, [reloadSources, reloadArticles]);
 
@@ -330,6 +352,8 @@ export default function App() {
         setArticles((prev) => prev.map((x) => (x.id === id ? { ...x, read: true } : x)));
         await reloadSources();
       }
+      // Auto-extrae el contenido completo si el post solo tiene resumen.
+      void extract(a);
     } catch (e) {
       setNotice({ kind: "err", text: `No se pudo abrir el artículo: ${e}` });
     }
@@ -432,18 +456,20 @@ export default function App() {
 
   async function openSettings() {
     try {
-      const [interval, threshold, embStatus, th, rs] = await Promise.all([
+      const [interval, threshold, embStatus, th, rs, purge] = await Promise.all([
         api.getRefreshInterval(),
         api.getVectorSimilarityThreshold(),
         api.getEmbeddingStatus(),
         api.getTheme(),
         api.getReaderSettings(),
+        api.getContentPurgeDays(),
       ]);
       setIntervalMinutes(interval);
       setSimilarityThreshold(threshold);
       setEmbeddingStatus(embStatus);
       setTheme(th);
       setReaderSettings(rs);
+      setPurgeDays(purge);
       setSettingsOpen(true);
     } catch (e) {
       setNotice({ kind: "err", text: `No se pudo leer la configuración: ${e}` });
@@ -461,6 +487,7 @@ export default function App() {
     rs: ReaderSettings,
     interval: number,
     threshold: number,
+    purge: number,
   ) {
     setSavingSettings(true);
     try {
@@ -469,6 +496,7 @@ export default function App() {
         api.setReaderSettings(rs),
         api.setRefreshInterval(interval),
         api.setVectorSimilarityThreshold(threshold),
+        api.setContentPurgeDays(purge),
       ]);
       setSettingsOpen(false);
       setNotice({ kind: "ok", text: `Configuración guardada` });
@@ -476,6 +504,24 @@ export default function App() {
       setNotice({ kind: "err", text: `Error al guardar: ${e}` });
     } finally {
       setSavingSettings(false);
+    }
+  }
+
+  /** Vacía ya el contenido extraído de los artículos de feed leídos. */
+  async function handlePurge() {
+    setPurging(true);
+    setNotice(null);
+    try {
+      const n = await api.purgeExtractedContent(0);
+      setNotice({
+        kind: "ok",
+        text: n > 0 ? `Contenido vaciado en ${n} artículos` : "No había contenido extraído que vaciar",
+      });
+      await reloadArticles();
+    } catch (e) {
+      setNotice({ kind: "err", text: `No se pudo vaciar el contenido: ${e}` });
+    } finally {
+      setPurging(false);
     }
   }
 
@@ -551,31 +597,9 @@ export default function App() {
     void handleSetCategory(id, cat || null);
   }
 
-  async function handleExtractFull() {
+  function handleExtractFull() {
     if (!current) return;
-    setExtracting(true);
-    setNotice(null);
-    try {
-      const updated = await api.extractArticle(current.url);
-      setCurrent(updated);
-      await reloadArticles();
-      if (updated.text && updated.text.trim().length > 50) {
-        setNotice({ kind: "ok", text: "Contenido extraído. Generando embedding" });
-        try {
-          await api.generateEmbedding(updated.id);
-          setNotice({ kind: "ok", text: "Contenido extraído y embedding generado" });
-          const refreshed = await api.getArticle(updated.id);
-          setCurrent(refreshed);
-          await reloadArticles();
-        } catch {
-          setNotice({ kind: "ok", text: "Contenido extraído (embedding pendiente)" });
-        }
-      }
-    } catch (e) {
-      setNotice({ kind: "err", text: `No se pudo extraer el contenido: ${e}` });
-    } finally {
-      setExtracting(false);
-    }
+    void extract(current);
   }
 
   async function handleRegenerateEmbedding() {
@@ -1233,12 +1257,15 @@ export default function App() {
           readerSettings={readerSettings}
           intervalMinutes={intervalMinutes}
           similarityThreshold={similarityThreshold}
+          purgeDays={purgeDays}
           embeddingStatus={embeddingStatus}
           saving={savingSettings}
+          purging={purging}
           onApplyAppearance={applyAppearance}
           onAccentChange={setAccent}
           onDensityChange={setDensity}
           onSave={saveSettings}
+          onPurge={() => void handlePurge()}
           onNotice={setNotice}
           onReloadSources={() => void reloadSources()}
           onClose={() => setSettingsOpen(false)}

@@ -262,6 +262,20 @@ pub fn migrate(conn: &Connection) -> Result<(), StorageError> {
         )?;
         conn.pragma_update(None, "user_version", 8)?;
     }
+    if version < 9 {
+        // Resumen original del feed, preservado aparte del `text` (que la
+        // extracción sobrescribe con el contenido completo). Permite "deshacer"
+        // la extracción: la purga resetea el artículo a su resumen sin perderlo.
+        conn.execute_batch(
+            r#"
+            ALTER TABLE articles ADD COLUMN summary TEXT NOT NULL DEFAULT '';
+
+            INSERT OR IGNORE INTO settings (key, value)
+                VALUES ('purge_extracted_days', '0');
+            "#,
+        )?;
+        conn.pragma_update(None, "user_version", 9)?;
+    }
     Ok(())
 }
 
@@ -303,7 +317,16 @@ mod tests {
         let version: i64 = conn
             .pragma_query_value(None, "user_version", |r| r.get(0))
             .unwrap();
-        assert_eq!(version, 8);
+        assert_eq!(version, 9);
+        // La columna `summary` (resumen original del feed) existe y no es NULL.
+        let has_summary: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('articles') WHERE name = 'summary'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(has_summary, 1);
         // La tabla vec0 usa la métrica cosine (necesaria para el umbral de similitud).
         let sql: String = conn
             .query_row(

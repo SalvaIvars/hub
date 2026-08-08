@@ -15,14 +15,14 @@
       root.style.colorScheme = theme;
     })();
   </script>
-  <title>Lector — A calm, local feed reader</title>
+  <title>hub — A calm, local feed reader</title>
   <meta name="description" content="A desktop feed reader. RSS, Atom and JSON feeds, local full-text search and semantic smart feeds. No cloud, no account, no tracking." />
-  <meta property="og:title" content="Lector — A calm, local feed reader" />
+  <meta property="og:title" content="hub — A calm, local feed reader" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://salvaivars.github.io/hub/" />
   <meta property="og:description" content="A desktop feed reader. RSS, Atom and JSON feeds, local full-text search and semantic smart feeds. No cloud, no account, no tracking." />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Lector — A calm, local feed reader" />
+  <meta name="twitter:title" content="hub — A calm, local feed reader" />
   <meta name="twitter:description" content="A desktop feed reader. RSS, Atom and JSON feeds, local search and semantic smart feeds." />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -38,7 +38,7 @@
         <path d="M4 11a9 9 0 0 1 9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         <path d="M4 4a16 16 0 0 1 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
       </svg>
-      <span>Lector</span>
+      <span>hub</span>
     </a>
     <nav class="nav-links" aria-label="Sections">
       <a href="#download">Download</a>
@@ -63,7 +63,7 @@
         <em>But this one is yours.</em>
       </h1>
       <p class="lede">
-        Lector is a calm RSS/Atom/JSON reader for your desktop. Feeds, saved
+        hub is a calm RSS/Atom/JSON reader for your desktop. Feeds, saved
         searches and smart feeds live in a local database on your machine —
         nothing leaves it. No cloud, no account, no tracking.
       </p>
@@ -95,18 +95,18 @@
         </div>
         <div class="terminal-body">
           <div class="term-pane is-active" data-pane="macos">
-            <pre>$ curl -fsSL https://github.com/SalvaIvars/hub/releases/latest/download/Lector.dmg -o Lector.dmg
-$ open Lector.dmg</pre>
+            <pre>$ curl -fsSL https://github.com/SalvaIvars/hub/releases/latest/download/hub.dmg -o hub.dmg
+$ open hub.dmg</pre>
             <a class="btn btn-primary btn-sm" href="https://github.com/SalvaIvars/hub/releases" target="_blank" rel="noopener">Download .dmg →</a>
           </div>
           <div class="term-pane" data-pane="windows">
-            <pre>&gt; Invoke-WebRequest https://github.com/SalvaIvars/hub/releases/latest/download/Lector-Setup.msi -OutFile Lector.msi
-&gt; .\Lector.msi</pre>
+            <pre>&gt; Invoke-WebRequest https://github.com/SalvaIvars/hub/releases/latest/download/hub-Setup.msi -OutFile hub.msi
+&gt; .\hub.msi</pre>
             <a class="btn btn-primary btn-sm" href="https://github.com/SalvaIvars/hub/releases" target="_blank" rel="noopener">Download .msi →</a>
           </div>
           <div class="term-pane" data-pane="linux">
-            <pre>$ wget https://github.com/SalvaIvars/hub/releases/latest/download/lector-amd64.deb
-$ sudo apt install ./lector-amd64.deb</pre>
+            <pre>$ wget https://github.com/SalvaIvars/hub/releases/latest/download/hub-amd64.deb
+$ sudo apt install ./hub-amd64.deb</pre>
             <a class="btn btn-primary btn-sm" href="https://github.com/SalvaIvars/hub/releases" target="_blank" rel="noopener">Download .deb →</a>
           </div>
           <div class="term-pane" data-pane="source">
@@ -118,16 +118,16 @@ $ npm run tauri dev</pre>
       </div>
       <p class="note">
         En macOS, si el sistema muestra <em>"no se puede abrir porque no se puede
-        verificar el desarrollador"</em>: clic derecho sobre Lector.app → Abrir.
+        verificar el desarrollador"</em>: clic derecho sobre hub.app → Abrir.
       </p>
     </section>
 
     <section id="features" class="section">
-      <h2 class="section-title"><span class="section-num">#</span> Why Lector?</h2>
+      <h2 class="section-title"><span class="section-num">#</span> Why hub?</h2>
       <div class="features-grid">
         <article class="card">
           <h3>Feeds, the usual way</h3>
-          <p>RSS, Atom and JSON feeds. Paste a URL and Lector discovers the feed for you — no hunting for the orange icon.</p>
+          <p>RSS, Atom and JSON feeds. Paste a URL and hub discovers the feed for you — no hunting for the orange icon.</p>
         </article>
         <article class="card">
           <h3>Clean reading</h3>
@@ -164,32 +164,32 @@ $ npm run tauri dev</pre>
       <h2 class="section-title"><span class="section-num">*</span> Screens</h2>
       <figure class="shot">
         <a href="screenshots/fig1-light.png" target="_blank" rel="noopener">
-          <img src="screenshots/fig1-light.png" alt="Lector in light theme, showing the reading list with the sources sidebar" loading="lazy" />
+          <img src="screenshots/fig1-light.png" alt="hub in light theme, showing the reading list with the sources sidebar" loading="lazy" />
         </a>
         <figcaption>Fig. 01 | Light theme — the reading list with sources, categories and smart feeds</figcaption>
       </figure>
       <figure class="shot">
         <a href="screenshots/fig2-dark.png" target="_blank" rel="noopener">
-          <img src="screenshots/fig2-dark.png" alt="Lector in dark theme showing an extracted article in the reader" loading="lazy" />
+          <img src="screenshots/fig2-dark.png" alt="hub in dark theme showing an extracted article in the reader" loading="lazy" />
         </a>
         <figcaption>Fig. 02 | Dark theme — an article with extracted content, in the reader</figcaption>
       </figure>
       <figure class="shot">
         <a href="screenshots/fig3-sepia.png" target="_blank" rel="noopener">
-          <img src="screenshots/fig3-sepia.png" alt="Lector in sepia theme with the settings panel open" loading="lazy" />
+          <img src="screenshots/fig3-sepia.png" alt="hub in sepia theme with the settings panel open" loading="lazy" />
         </a>
         <figcaption>Fig. 03 | Sepia theme — settings and appearance controls</figcaption>
       </figure>
       <figure class="shot">
         <a href="screenshots/fig4-smartfeed.png" target="_blank" rel="noopener">
-          <img src="screenshots/fig4-smartfeed.png" alt="Lector showing a semantic smart feed of saved searches" loading="lazy" />
+          <img src="screenshots/fig4-smartfeed.png" alt="hub showing a semantic smart feed of saved searches" loading="lazy" />
         </a>
         <figcaption>Fig. 04 | Focus mode — the calm reader, at full attention</figcaption>
       </figure>
     </section>
 
     <section class="section">
-      <h2 class="section-title"><span class="section-num">!</span> What Lector doesn't do</h2>
+      <h2 class="section-title"><span class="section-num">!</span> What hub doesn't do</h2>
       <div class="not-grid">
         <div class="not-item">
           <span class="not-mark">×</span>
@@ -214,7 +214,7 @@ $ npm run tauri dev</pre>
       <h2 class="section-title"><span class="section-num">@</span> About</h2>
       <div class="about">
         <p>
-          Lector is built by <a href="https://github.com/SalvaIvars" target="_blank" rel="noopener">Salva Ivars</a>,
+          hub is built by <a href="https://github.com/SalvaIvars" target="_blank" rel="noopener">Salva Ivars</a>,
           a developer who kept losing track of the web he actually wanted to read.
           It started as a personal tool — a reader that is fast, local and quiet —
           and grew into the app you see here.
@@ -230,7 +230,7 @@ $ npm run tauri dev</pre>
 
   <footer class="footer">
     <div class="footer-inner">
-      <span>Lector · MIT License</span>
+      <span>hub · MIT License</span>
       <nav class="footer-links" aria-label="External links">
         <a href="https://github.com/SalvaIvars/hub" target="_blank" rel="noopener">GitHub</a>
         <a href="https://github.com/SalvaIvars/hub/releases" target="_blank" rel="noopener">Releases</a>

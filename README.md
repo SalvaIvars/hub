@@ -1,6 +1,6 @@
 # Hub
 
-Lector personal de feeds (RSS/Atom/JSON). Aplicación de escritorio **Tauri 2** con backend Rust (workspace Cargo, arquitectura hexagonal) y frontend React + TypeScript + Vite.
+hub personal de feeds (RSS/Atom/JSON). Aplicación de escritorio **Tauri 2** con backend Rust (workspace Cargo, arquitectura hexagonal) y frontend React + TypeScript + Vite.
 
 ## Ejecución
 

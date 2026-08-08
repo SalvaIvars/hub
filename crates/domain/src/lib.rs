@@ -1,4 +1,4 @@
-//! Modelos puros del dominio de Lector.
+//! Modelos puros del dominio de hub.
 //!
 //! Este crate NO tiene dependencias externas de infraestructura (DB, HTTP,
 //! parser). Define únicamente las estructuras de datos que comparten los

@@ -53,6 +53,64 @@ async fn ingest_real_blog_with_feed() {
 
 #[tokio::test]
 #[ignore = "requiere red"]
+async fn ingest_real_hn_front_page_creates_source() {
+    let conn = Arc::new(Mutex::new(open_db_in_memory().unwrap()));
+    let articles = ArticleRepo::new(conn.clone());
+    let sources = SourceRepo::new(conn);
+    let http = ReqwestClient::new();
+
+    let pl = Pipeline {
+        http: &http,
+        extractor: &TrafilaturaExtractor,
+        discoverer: &WebpageDiscoverer,
+        parser: &FeedRsParser,
+        articles: &articles,
+        sources: &sources,
+    };
+
+    // La portada de HN no anuncia <link rel="alternate">: el source debe salir
+    // de la heurística de rutas comunes (índice) → /rss.
+    let result = pl.ingest_url("https://news.ycombinator.com/").await.expect("ingesta falló");
+
+    let summary = result.source.expect("la portada de HN debe crear un source");
+    assert!(summary.feed_url.is_some(), "debe tener feed_url (/rss)");
+    assert!(summary.article_count > 0, "debe guardar posts del feed");
+}
+
+#[tokio::test]
+#[ignore = "requiere red"]
+async fn ingest_real_hn_item_is_single_article() {
+    let conn = Arc::new(Mutex::new(open_db_in_memory().unwrap()));
+    let articles = ArticleRepo::new(conn.clone());
+    let sources = SourceRepo::new(conn);
+    let http = ReqwestClient::new();
+
+    let pl = Pipeline {
+        http: &http,
+        extractor: &TrafilaturaExtractor,
+        discoverer: &WebpageDiscoverer,
+        parser: &FeedRsParser,
+        articles: &articles,
+        sources: &sources,
+    };
+
+    // Un item de HN no es un índice: no debe derivar a un source con el feed
+    // de la portada, sino guardarse como artículo suelto.
+    let result = pl
+        .ingest_url("https://news.ycombinator.com/item?id=49224294")
+        .await
+        .expect("ingesta falló");
+
+    assert!(result.source.is_none(), "no debe crearse un source con el feed del host");
+    assert!(result.article_id.is_some(), "el item debe guardarse como artículo");
+    let article = articles.get(result.article_id.unwrap()).unwrap().unwrap();
+    assert_eq!(article.source_id, None, "el item es un artículo suelto");
+    let all = articles.list_all().unwrap();
+    assert_eq!(all.len(), 1, "no deben guardarse los posts de la portada");
+}
+
+#[tokio::test]
+#[ignore = "requiere red"]
 async fn ingest_real_root_without_feed_saves_nothing() {
     let conn = Arc::new(Mutex::new(open_db_in_memory().unwrap()));
     let articles = ArticleRepo::new(conn.clone());

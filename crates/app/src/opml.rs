@@ -28,7 +28,7 @@ fn escape_attr(s: &str) -> String {
 pub fn export_opml_xml(sources: &[SourceSummary]) -> String {
     let mut out = String::new();
     out.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-    out.push_str("<opml version=\"2.0\">\n<head><title>Lector - Fuentes</title></head>\n<body>\n");
+    out.push_str("<opml version=\"2.0\">\n<head><title>hub - Fuentes</title></head>\n<body>\n");
 
     // Agrupa por categoría manteniendo el orden de `sources`; las sin categoría
     // van al final.

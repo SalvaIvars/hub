@@ -3,9 +3,12 @@ use crate::index::is_index_page;
 use crate::utc_now;
 use reader_domain::{Article, FeedEntry, IngestResult, Source, SourceSummary};
 use reader_extractor::{ArticleExtractor, ExtractorError, ExtractedArticle};
-use reader_feeds::{FeedDiscoverer, FeedError, FeedParser};
+use reader_feeds::{FeedDiscoverer, FeedError, FeedKind, FeedLink, FeedParser};
 use reader_storage::{ArticleRepository, SourceRepository, StorageError};
 use url::Url;
+
+/// Rutas comunes a probar como feed cuando una página índice no anuncia ninguno.
+const COMMON_FEED_PATHS: &[&str] = &["/feed", "/rss", "/atom.xml", "/feed.xml", "/index.xml"];
 
 /// Error tipado de la orquestación.
 #[derive(Debug, thiserror::Error)]
@@ -57,9 +60,25 @@ impl Pipeline<'_> {
         let home_url = page.final_url.clone();
         let now = utc_now();
 
+        // La página es un índice (portada que solo lista posts) si lo anuncia su
+        // JSON-LD o si su URL es la raíz del sitio.
+        let home_parsed = Url::parse(&home_url).unwrap_or_else(|_| base_url.clone());
+        let is_index = is_index_page(&page.html, &home_parsed);
+
+        // Candidatos de feed: los que la página anuncia explícitamente
+        // (`<link rel="alternate">`), o la heurística de rutas comunes SOLO
+        // cuando la página parece un índice del sitio. Una subruta (p. ej. el
+        // item de un agregador) nunca debe derivarse a un feed supuesto.
+        let explicit = self.discoverer.discover(&page.html, &base_url)?;
+        let links: Vec<FeedLink> = if explicit.is_empty() && is_index {
+            common_feed_candidates(&base_url)
+        } else {
+            explicit
+        };
+
         // Si el contenido es en sí un feed (p. ej. el usuario pegó feed.xml),
         // usarlo directamente.
-        let direct_feed = if self.discoverer.discover(&page.html, &base_url)?.is_empty() {
+        let direct_feed = if links.is_empty() {
             self.parser.parse(&page.html).ok().filter(|e| !e.is_empty())
         } else {
             None
@@ -79,7 +98,6 @@ impl Pipeline<'_> {
             first_feed_article_id = first_id;
             source_id = Some(sid);
         } else {
-            let links = self.discoverer.discover(&page.html, &base_url)?;
             for link in links.iter().take(Self::MAX_FEED_TRIES) {
                 match self.http.fetch(&link.href).await {
                     Ok(feed_page) => match self.parser.parse(&feed_page.html) {
@@ -109,7 +127,6 @@ impl Pipeline<'_> {
         // Si el URL pegado era un feed o una portada/índice (página que solo
         // lista otros posts), no hay artículo que extraer: se devuelve el
         // primer post del feed como resultado, o ningún artículo si no hubo.
-        let is_index = is_index_page(&page.html, &Url::parse(&home_url).unwrap_or(base_url.clone()));
         if is_feed_url || is_index {
             if let (Some(sid), Some(aid)) = (source_id, first_feed_article_id) {
                 let title = self
@@ -150,7 +167,7 @@ impl Pipeline<'_> {
             title: extracted.title.clone(),
             html: extracted.content_html,
             text: extracted.text_content,
-            raw_html: page.html,
+            raw_html: String::new(),
             byline: extracted.byline,
             site_name: extracted.site_name,
             published_at: extracted.published_time,
@@ -250,7 +267,7 @@ impl Pipeline<'_> {
             title: extracted.title.clone(),
             html: extracted.content_html,
             text: extracted.text_content,
-            raw_html: page.html,
+            raw_html: String::new(),
             byline: extracted.byline,
             site_name: extracted.site_name,
             published_at: extracted.published_time,
@@ -362,6 +379,23 @@ impl Pipeline<'_> {
     }
 }
 
+/// Construye los candidatos heurísticos de feed para el host de `base_url`.
+///
+/// Solo deben probarse cuando la página es un índice del sitio y no anuncia
+/// ningún feed explícito; así una subruta (p. ej. un item) nunca se deriva a
+/// un feed supuesto del host.
+fn common_feed_candidates(base_url: &Url) -> Vec<FeedLink> {
+    COMMON_FEED_PATHS
+        .iter()
+        .filter_map(|path| base_url.join(path).ok())
+        .map(|url| FeedLink {
+            href: url.to_string(),
+            title: None,
+            kind: FeedKind::Rss,
+        })
+        .collect()
+}
+
 /// Extracción mínima cuando trafilatura no logra extraer contenido:
 /// conserva el `<title>` y el texto de la página tal cual.
 fn fallback_extraction(html: &str, url: &str) -> ExtractedArticle {
@@ -416,7 +450,6 @@ fn strip_html(html: &str) -> String {
 mod tests {
     use super::*;
     use crate::http::FetchedPage;
-    use reader_feeds::FeedLink;
 
     // --- Mocks ligeros (sin dependencias externas) ---
 
@@ -541,7 +574,8 @@ mod tests {
         let article = st.articles.get(result.article_id.unwrap()).unwrap().unwrap();
         assert_eq!(article.source_id, None);
         assert_eq!(article.text, "contenido");
-        assert!(!article.raw_html.is_empty());
+        // Desde el cambio de almacenamiento, el HTML crudo ya no se persiste.
+        assert!(article.raw_html.is_empty());
     }
 
     #[tokio::test]
@@ -600,6 +634,67 @@ mod tests {
         let article = st.articles.get(result.article_id.unwrap()).unwrap().unwrap();
         assert_eq!(article.url, "https://site.com/posts/hello");
         assert_eq!(article.title, "Artículo extraído");
+    }
+
+    #[tokio::test]
+    async fn ingest_item_subpath_never_derives_to_host_feed() {
+        // Un item (p. ej. un post de HN) no es un índice: aunque el host tenga
+        // un /rss accesible, no debe crearse un source con ese feed. La página
+        // se guarda como artículo suelto.
+        let http = MockHttp::new(vec![
+            (
+                "https://news.ycombinator.com/item?id=1234",
+                "<html><head><title>Post de ejemplo | Hacker News</title></head>\
+                 <body><span class=\"titleline\"><a href=\"https://ejemplo.com/post\">Post de ejemplo</a></span></body></html>",
+            ),
+            // Si el pipeline probara el feed heurístico, lo encontraría; el test
+            // demuestra que NO debe llegar a probarlo.
+            ("https://news.ycombinator.com/rss", FEED_XML),
+        ]);
+        let st = storage();
+        let pl = Pipeline {
+            http: &http,
+            extractor: &FakeExtractor,
+            discoverer: &reader_feeds::WebpageDiscoverer,
+            parser: &FakeParser,
+            articles: &st.articles,
+            sources: &st.sources,
+        };
+        let result = pl
+            .ingest_url("https://news.ycombinator.com/item?id=1234")
+            .await
+            .unwrap();
+
+        assert!(result.source.is_none(), "no debe crearse un source con el feed del host");
+        assert_eq!(result.feed_articles_added, 0);
+        let article = st.articles.get(result.article_id.unwrap()).unwrap().unwrap();
+        assert_eq!(article.source_id, None, "el item es un artículo suelto");
+        assert_eq!(article.url, "https://news.ycombinator.com/item?id=1234");
+        assert_eq!(st.articles.list_all().unwrap().len(), 1, "no se guardan posts del feed");
+    }
+
+    #[tokio::test]
+    async fn ingest_index_without_explicit_feed_uses_fallback_paths() {
+        // Una portada sin feed explícito SÍ deriva al feed heurístico del host:
+        // la heurística queda para los índices.
+        let http = MockHttp::new(vec![
+            ("https://site.com/", PAGE_HTML),
+            ("https://site.com/rss", FEED_XML),
+        ]);
+        let st = storage();
+        let pl = Pipeline {
+            http: &http,
+            extractor: &FakeExtractor,
+            discoverer: &NoFeedDiscoverer,
+            parser: &FakeParser,
+            articles: &st.articles,
+            sources: &st.sources,
+        };
+        let result = pl.ingest_url("https://site.com/").await.unwrap();
+
+        let summary = result.source.unwrap();
+        assert_eq!(summary.feed_url.as_deref(), Some("https://site.com/rss"));
+        assert_eq!(summary.article_count, 2);
     }
 
     #[tokio::test]

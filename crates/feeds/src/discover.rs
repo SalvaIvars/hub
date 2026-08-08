@@ -38,13 +38,12 @@ impl FeedLink {
     }
 }
 
-/// Rutas comunes a probar cuando la página no anuncia un feed explícito.
-const COMMON_FEED_PATHS: &[&str] = &["/feed", "/rss", "/atom.xml", "/feed.xml", "/index.xml"];
-
-/// Descubre feeds anunciados en el HTML (`<link rel="alternate" ...>`).
+/// Descubre feeds anunciados explícitamente en el HTML
+/// (`<link rel="alternate" type="...rss|atom|json" ...>`).
 ///
-/// Si no hay feeds explícitos, devuelve las rutas comunes del host como
-/// candidatos (el pipeline probará cada una hasta que una parsee).
+/// Solo devuelve feeds que la página anuncia: la heurística de rutas comunes
+/// (`/feed`, `/rss`, ...) NO vive aquí, sino en el pipeline, que solo la aplica
+/// cuando la página parece un índice del sitio.
 pub struct WebpageDiscoverer;
 
 impl FeedDiscoverer for WebpageDiscoverer {
@@ -57,18 +56,6 @@ impl FeedDiscoverer for WebpageDiscoverer {
                     .join(&link.href)
                     .map_err(|e| FeedError::InvalidUrl(e.to_string()))?;
                 feeds.push(FeedLink::new(resolved.to_string(), link.title, link.kind));
-            }
-        }
-
-        if feeds.is_empty() {
-            for path in COMMON_FEED_PATHS {
-                if let Ok(resolved) = base_url.join(path) {
-                    feeds.push(FeedLink::new(
-                        resolved.to_string(),
-                        None,
-                        FeedKind::Rss,
-                    ));
-                }
             }
         }
 
@@ -185,21 +172,16 @@ mod tests {
         <link rel="stylesheet" href="/style.css">
         <link rel="canonical" href="https://ejemplo.com/post">
         <link rel="alternate" href="https://ejemplo.com/fr" hreflang="fr">"#;
-        // Ninguna de esas etiquetas es un feed: solo deben quedar los
-        // candidatos de la heurística de rutas comunes.
+        // Ninguna de esas etiquetas es un feed: sin feeds explícitos, el
+        // descubridor no inventa candidatos (la heurística es del pipeline).
         let feeds = discover(html, "https://ejemplo.com");
-        assert!(!feeds.is_empty());
-        assert!(feeds.iter().all(|f| !f.href.contains("style.css")));
-        assert!(feeds.iter().all(|f| f.href != "https://ejemplo.com/post"));
-        assert!(feeds.iter().all(|f| f.href != "https://ejemplo.com/fr"));
+        assert!(feeds.is_empty());
     }
 
     #[test]
-    fn falls_back_to_common_paths() {
+    fn returns_empty_when_no_explicit_feed() {
         let feeds = discover("<html><body>sin feed</body></html>", "https://ejemplo.com");
-        assert_eq!(feeds.len(), COMMON_FEED_PATHS.len());
-        assert!(feeds.iter().any(|f| f.href == "https://ejemplo.com/feed"));
-        assert!(feeds.iter().any(|f| f.href == "https://ejemplo.com/atom.xml"));
+        assert!(feeds.is_empty());
     }
 
     #[test]

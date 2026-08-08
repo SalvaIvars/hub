@@ -197,6 +197,50 @@ pub fn set_refresh_interval(minutes: i64, state: State<'_, AppState>) -> Result<
         .map_err(|e| e.to_string())
 }
 
+/// Clave de la purga automática de contenido extraído.
+const PURGE_DAYS_KEY: &str = "purge_extracted_days";
+
+/// Devuelve los días tras los que se vacía automáticamente el contenido
+/// extraído de los artículos leídos (0 = nunca). Default 0.
+#[tauri::command]
+pub fn get_content_purge_days(state: State<'_, AppState>) -> Result<i64, String> {
+    let value = state
+        .settings
+        .get(PURGE_DAYS_KEY)
+        .map_err(|e| e.to_string())?
+        .unwrap_or_else(|| "0".to_string());
+    value
+        .parse::<i64>()
+        .map_err(|e| format!("días de purga inválidos: {e}"))
+}
+
+/// Guarda los días de purga automática (0 = nunca; debe ser >= 0).
+#[tauri::command]
+pub fn set_content_purge_days(days: i64, state: State<'_, AppState>) -> Result<(), String> {
+    if days < 0 {
+        return Err("los días de purga no pueden ser negativos".into());
+    }
+    state
+        .settings
+        .set(PURGE_DAYS_KEY, &days.to_string())
+        .map_err(|e| e.to_string())
+}
+
+/// Vacía el contenido extraído de los artículos de feed ya leídos, volviéndolos
+/// a su resumen original y borrando sus embeddings. Con `days > 0` solo se
+/// purgan los artículos con `fetched_at` anterior a `days`. Devuelve el nº de
+/// artículos purgados.
+#[tauri::command]
+pub fn purge_extracted_content(days: i64, state: State<'_, AppState>) -> Result<usize, String> {
+    if days < 0 {
+        return Err("los días de purga no pueden ser negativos".into());
+    }
+    state
+        .articles
+        .purge_extracted_content(days)
+        .map_err(|e| e.to_string())
+}
+
 /// Clave del umbral de similitud de la búsqueda semántica.
 const SIMILARITY_THRESHOLD_KEY: &str = "vector_similarity_threshold";
 /// Umbral por defecto si no está en settings.

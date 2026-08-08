@@ -29,6 +29,12 @@ pub trait ArticleRepository: Send + Sync {
         fetched_at: &str,
     ) -> Result<Option<i64>, StorageError>;
     fn count_by_source(&self, source_id: i64) -> Result<(i64, i64), StorageError>;
+    /// Vacía el contenido extraído (`html`, `text`, `raw_html`) de los
+    /// artículos de feed ya leídos, volviéndolos a su resumen original
+    /// (columna `summary`). También borra sus embeddings. Con `days > 0` solo
+    /// se purgan los artículos cuyo `fetched_at` sea anterior a `days`.
+    /// Devuelve el nº de artículos purgados.
+    fn purge_extracted_content(&self, days: i64) -> Result<usize, StorageError>;
 }
 
 /// Adaptador concreto sobre SQLite.
@@ -312,9 +318,9 @@ impl ArticleRepository for ArticleRepo {
         conn.execute(
             r#"
             INSERT OR IGNORE INTO articles
-                (source_id, url, title, html, text, raw_html, byline, site_name,
+                (source_id, url, title, html, text, raw_html, summary, byline, site_name,
                  published_at, fetched_at, read, starred)
-            VALUES (?1, ?2, ?3, '', ?4, '', NULL, NULL, ?5, ?6, 0, 0)
+            VALUES (?1, ?2, ?3, '', ?4, '', ?4, NULL, NULL, ?5, ?6, 0, 0)
             "#,
             params![
                 source_id,
@@ -345,6 +351,63 @@ impl ArticleRepository for ArticleRepo {
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .map_err(StorageError::Sqlite)
+    }
+
+    fn purge_extracted_content(&self, days: i64) -> Result<usize, StorageError> {
+        let conn = self.conn.lock().unwrap();
+        // Candidatos: artículos de feed (no sueltos), leídos, con contenido
+        // extraído, y (si `days > 0`) con `fetched_at` anterior a `days`.
+        let age = if days > 0 {
+            " AND fetched_at < datetime('now', '-' || ?1 || ' days')"
+        } else {
+            ""
+        };
+        let where_clause = format!("source_id IS NOT NULL AND read = 1 AND html != ''{age}");
+
+        // Una sola transacción: embeddings, tabla vectorial y artículo.
+        let tx = conn.unchecked_transaction().map_err(StorageError::Sqlite)?;
+        if days > 0 {
+            tx.execute(
+                &format!(
+                    "DELETE FROM article_embeddings WHERE article_id IN (SELECT id FROM articles WHERE {where_clause})"
+                ),
+                params![days],
+            )?;
+            tx.execute(
+                &format!(
+                    "DELETE FROM vec_articles WHERE article_id IN (SELECT id FROM articles WHERE {where_clause})"
+                ),
+                params![days],
+            )?;
+            tx.execute(
+                &format!(
+                    "UPDATE articles SET html = '', text = COALESCE(NULLIF(summary, ''), ''), raw_html = '' WHERE {where_clause}"
+                ),
+                params![days],
+            )?;
+        } else {
+            tx.execute(
+                &format!(
+                    "DELETE FROM article_embeddings WHERE article_id IN (SELECT id FROM articles WHERE {where_clause})"
+                ),
+                [],
+            )?;
+            tx.execute(
+                &format!(
+                    "DELETE FROM vec_articles WHERE article_id IN (SELECT id FROM articles WHERE {where_clause})"
+                ),
+                [],
+            )?;
+            tx.execute(
+                &format!(
+                    "UPDATE articles SET html = '', text = COALESCE(NULLIF(summary, ''), ''), raw_html = '' WHERE {where_clause}"
+                ),
+                [],
+            )?;
+        }
+        let changed = tx.changes() as usize;
+        tx.commit().map_err(StorageError::Sqlite)?;
+        Ok(changed)
     }
 }
 
@@ -743,5 +806,101 @@ mod tests {
         let recent = repo.list_recent(30).unwrap();
         assert_eq!(recent.len(), 1);
         assert_eq!(recent[0].id, id2);
+    }
+
+    fn feed_entry(title: &str, url: &str, summary: &str) -> FeedEntry {
+        FeedEntry {
+            title: title.into(),
+            link: url.into(),
+            summary: Some(summary.into()),
+            published: Some("2024-01-01T00:00:00Z".into()),
+        }
+    }
+
+    #[test]
+    fn feed_entry_keeps_summary_after_extraction_and_purge() {
+        let repo = setup();
+        let id = repo
+            .insert_feed_entry(1, &feed_entry("Post", "https://a.com/post", "resumen original"), "2024-01-02T00:00:00Z")
+            .unwrap()
+            .unwrap();
+
+        // Simula la extracción: upsert con contenido completo; `summary` no se toca.
+        let mut full = article("https://a.com/post", "Post");
+        full.html = "<p>contenido completo</p>".into();
+        full.text = "contenido completo en detalle".into();
+        repo.upsert(&full).unwrap();
+        let got = repo.get(id).unwrap().unwrap();
+        assert_eq!(got.html, "<p>contenido completo</p>");
+
+        // Al purgar un artículo leído, vuelve a su resumen original.
+        repo.mark_read(id, true).unwrap();
+        let purged = repo.purge_extracted_content(0).unwrap();
+        assert_eq!(purged, 1);
+        let got = repo.get(id).unwrap().unwrap();
+        assert_eq!(got.html, "");
+        assert_eq!(got.text, "resumen original");
+        assert!(got.raw_html.is_empty());
+    }
+
+    #[test]
+    fn purge_deletes_embedding_and_skips_unread_and_singles() {
+        use crate::embedding_repo::{EmbeddingRepo, EmbeddingRepository};
+        let repo = setup();
+        let embeddings = EmbeddingRepo::new(repo.conn.clone());
+
+        // Artículo de feed leído con contenido y embedding.
+        let read_id = repo.upsert(&Article {
+            source_id: Some(1),
+            read: true,
+            ..article("https://a.com/read", "leído")
+        }).unwrap();
+        embeddings.upsert(read_id, &vec![0.5; 384], "m", 1, "t").unwrap();
+        assert!(repo.get(read_id).unwrap().unwrap().has_embedding);
+
+        // Artículo de feed no leído y artículo suelto leído: no se tocan.
+        let unread_id = repo.upsert(&Article {
+            source_id: Some(1),
+            read: false,
+            ..article("https://a.com/unread", "no leído")
+        }).unwrap();
+        let single_id = repo.upsert(&Article {
+            source_id: None,
+            read: true,
+            ..article("https://suelto.com/1", "suelto")
+        }).unwrap();
+
+        let purged = repo.purge_extracted_content(0).unwrap();
+        assert_eq!(purged, 1);
+
+        let read = repo.get(read_id).unwrap().unwrap();
+        assert!(read.html.is_empty());
+        assert!(embeddings.get(read_id).unwrap().is_none());
+        assert!(!repo.list_all().unwrap().iter().find(|a| a.id == read_id).unwrap().has_embedding);
+
+        assert!(!repo.get(unread_id).unwrap().unwrap().html.is_empty());
+        assert!(!repo.get(single_id).unwrap().unwrap().html.is_empty());
+    }
+
+    #[test]
+    fn purge_respects_age_filter() {
+        let repo = setup();
+        let old = repo.upsert(&Article {
+            source_id: Some(1),
+            read: true,
+            fetched_at: "2020-01-01T00:00:00Z".into(),
+            ..article("https://a.com/old", "viejo")
+        }).unwrap();
+        let recent = repo.upsert(&Article {
+            source_id: Some(1),
+            read: true,
+            fetched_at: "2099-01-01T00:00:00Z".into(),
+            ..article("https://a.com/new", "nuevo")
+        }).unwrap();
+
+        let purged = repo.purge_extracted_content(1000).unwrap();
+        assert_eq!(purged, 1);
+        assert!(repo.get(old).unwrap().unwrap().html.is_empty());
+        assert!(!repo.get(recent).unwrap().unwrap().html.is_empty());
     }
 }

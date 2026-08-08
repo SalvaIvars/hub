@@ -1,6 +1,6 @@
-# Lector landing page
+# hub landing page
 
-Página estática de descarga para Lector (HTML/CSS/JS plano, sin build). Inspirada en la estética de [pi.dev](https://pi.dev).
+Página estática de descarga para hub (HTML/CSS/JS plano, sin build). Inspirada en la estética de [pi.dev](https://pi.dev).
 
 ## Ejecutar en local
 

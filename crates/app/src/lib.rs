@@ -11,7 +11,8 @@ use reader_extractor::TrafilaturaExtractor;
 use reader_feeds::{FeedRsParser, WebpageDiscoverer};
 use reader_pipeline::{Pipeline, ReqwestClient};
 use reader_storage::{
-    ArticleRepo, EmbeddingRepo, EmbeddingRepository, SettingsRepo, SettingsRepository, SourceRepo,
+    ArticleRepo, ArticleRepository, EmbeddingRepo, EmbeddingRepository, SettingsRepo,
+    SettingsRepository, SourceRepo,
 };
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -54,7 +55,7 @@ pub fn run() {
                 None => tauri::WebviewUrl::App("index.html".into()),
             };
             WebviewWindowBuilder::new(app, "main", url)
-                .title("Lector")
+                .title("hub")
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(900.0, 600.0)
                 .center()
@@ -111,6 +112,9 @@ pub fn run() {
             commands::refresh_all_sources,
             commands::get_refresh_interval,
             commands::set_refresh_interval,
+            commands::get_content_purge_days,
+            commands::set_content_purge_days,
+            commands::purge_extracted_content,
             commands::get_vector_similarity_threshold,
             commands::set_vector_similarity_threshold,
             commands::get_theme,
@@ -132,7 +136,7 @@ pub fn run() {
             commands::get_embedding_status,
         ])
         .run(tauri::generate_context!())
-        .expect("error al ejecutar Lector");
+        .expect("error al ejecutar hub");
 }
 
 fn app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -180,6 +184,23 @@ fn spawn_refresh_task(app: tauri::AppHandle, conn: Arc<Mutex<rusqlite::Connectio
             };
             if let Ok(added) = pipeline.refresh_all().await {
                 let _ = app.emit("sources-refreshed", added);
+            }
+
+            // Limpieza automática: si está configurado, vacía el contenido
+            // extraído de los artículos leídos con más de `purge_extracted_days`
+            // días, para que la base no crezca sin límite.
+            let purge_days: i64 = SettingsRepo::new(conn.clone())
+                .get("purge_extracted_days")
+                .ok()
+                .flatten()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0);
+            if purge_days > 0 {
+                if let Ok(purged) = articles.purge_extracted_content(purge_days) {
+                    if purged > 0 {
+                        let _ = app.emit("content-purged", purged);
+                    }
+                }
             }
         }
     });

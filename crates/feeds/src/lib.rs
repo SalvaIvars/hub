@@ -8,7 +8,9 @@
 //! Nota de diseño: se evaluó `webpage-rs` para el descubrimiento, pero su
 //! modelo `HTML.link` no conserva el atributo `rel`/`type` y su campo `feed`
 //! nunca se puebla (siempre `None` en v2.x). Por eso el adaptador escanea el
-//! HTML directamente, con soporte de heurísticas comunes (/feed, /rss, ...).
+//! HTML directamente en busca de `<link rel="alternate">`. La heurística de
+//! rutas comunes (/feed, /rss, ...) vive en el pipeline, que solo la aplica
+//! cuando la página parece un índice del sitio.
 
 use url::Url;
 

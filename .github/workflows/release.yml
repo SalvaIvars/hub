@@ -20,15 +20,15 @@ jobs:
         include:
           - platform: macos-latest
             files: |
-              Lector.dmg
+              hub.dmg
           - platform: windows-latest
             files: |
-              Lector-Setup.msi
-              Lector-Setup.exe
+              hub-Setup.msi
+              hub-Setup.exe
           - platform: ubuntu-latest
             files: |
-              lector-amd64.deb
-              Lector.AppImage
+              hub-amd64.deb
+              hub.AppImage
 
     runs-on: ${{ matrix.platform }}
 
@@ -68,22 +68,22 @@ jobs:
         run: |
           rustup target add aarch64-apple-darwin
           npm run tauri build -- --target aarch64-apple-darwin --bundles dmg
-          mv target/aarch64-apple-darwin/release/bundle/dmg/*.dmg Lector.dmg
+          mv target/aarch64-apple-darwin/release/bundle/dmg/*.dmg hub.dmg
 
       - name: Build Windows
         if: matrix.platform == 'windows-latest'
         shell: bash
         run: |
           npm run tauri build
-          mv target/release/bundle/msi/*.msi Lector-Setup.msi
-          mv target/release/bundle/nsis/*-setup.exe Lector-Setup.exe
+          mv target/release/bundle/msi/*.msi hub-Setup.msi
+          mv target/release/bundle/nsis/*-setup.exe hub-Setup.exe
 
       - name: Build Linux
         if: matrix.platform == 'ubuntu-latest'
         run: |
           npm run tauri build -- --bundles deb appimage
-          mv target/release/bundle/deb/*.deb lector-amd64.deb
-          mv target/release/bundle/appimage/*.AppImage Lector.AppImage
+          mv target/release/bundle/deb/*.deb hub-amd64.deb
+          mv target/release/bundle/appimage/*.AppImage hub.AppImage
 
       - name: Upload release artifacts
         uses: softprops/action-gh-release@v2

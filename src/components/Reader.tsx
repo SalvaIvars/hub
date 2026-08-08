@@ -170,7 +170,9 @@ export function Reader({
       ) : snippet ? (
         <div className="reader-content reader-fallback">
           <p>{snippet}</p>
-          {!extracting && (
+          {extracting ? (
+            <p className="reader-hint">Extrayendo contenido completo…</p>
+          ) : (
             <p className="reader-hint">
               Este post del feed solo tiene su resumen. Pulsa "Extraer contenido
               completo" para leerlo sin anuncios.

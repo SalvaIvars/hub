@@ -16,13 +16,23 @@ interface SettingsProps {
   readerSettings: ReaderSettings;
   intervalMinutes: number;
   similarityThreshold: number;
+  purgeDays: number;
   embeddingStatus: [number, number] | null;
   saving: boolean;
+  purging: boolean;
   /** Aplica los cambios de apariencia en vivo (preview sin guardar). */
   onApplyAppearance: (theme: Theme, rs: ReaderSettings) => void;
   onAccentChange: (accent: Accent) => void;
   onDensityChange: (density: Density) => void;
-  onSave: (theme: Theme, rs: ReaderSettings, interval: number, threshold: number) => void;
+  onSave: (
+    theme: Theme,
+    rs: ReaderSettings,
+    interval: number,
+    threshold: number,
+    purgeDays: number,
+  ) => void;
+  /** Vacía ahora el contenido extraído de los artículos leídos. */
+  onPurge: () => void;
   onNotice: (n: Notice) => void;
   onReloadSources: () => void;
   onClose: () => void;
@@ -72,12 +82,15 @@ export function Settings({
   readerSettings: initialRs,
   intervalMinutes,
   similarityThreshold,
+  purgeDays: initialPurgeDays,
   embeddingStatus,
   saving,
+  purging,
   onApplyAppearance,
   onAccentChange,
   onDensityChange,
   onSave,
+  onPurge,
   onNotice,
   onReloadSources,
   onClose,
@@ -87,6 +100,7 @@ export function Settings({
   const [rs, setRs] = useState<ReaderSettings>(initialRs);
   const [interval, setInterval] = useState(intervalMinutes);
   const [threshold, setThreshold] = useState(similarityThreshold);
+  const [purgeDays, setPurgeDays] = useState(initialPurgeDays);
   const [opmlBusy, setOpmlBusy] = useState(false);
   const [opmlMsg, setOpmlMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -360,6 +374,36 @@ export function Settings({
                   </span>
                 </div>
               )}
+
+              <label className="settings-field">
+                <span>Vaciar contenido extraído automáticamente tras N días</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={purgeDays}
+                  onChange={(e) => setPurgeDays(Math.max(0, Number(e.target.value)))}
+                />
+                <span className="field-hint">
+                  El contenido completo de los artículos leídos se elimina al refrescar tras N días
+                  (0 = nunca). Los artículos vuelven a su resumen; se re-extraen al abrirlos.
+                </span>
+              </label>
+
+              <div className="settings-field">
+                <span>Vaciar ahora el contenido extraído</span>
+                <div className="settings-actions">
+                  <button
+                    className="settings-btn"
+                    onClick={onPurge}
+                    disabled={purging}
+                  >
+                    {purging ? "Vaciando…" : "Vaciar contenido de artículos leídos"}
+                  </button>
+                </div>
+                <span className="field-hint">
+                  Elimina el contenido completo extraído de todos los artículos de feed ya leídos.
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -370,7 +414,7 @@ export function Settings({
           </button>
           <button
             className="modal-save"
-            onClick={() => onSave(theme, rs, interval, threshold)}
+            onClick={() => onSave(theme, rs, interval, threshold, purgeDays)}
             disabled={saving}
           >
             {saving ? "Guardando" : "Guardar"}

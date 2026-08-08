@@ -93,6 +93,21 @@ export function setRefreshInterval(minutes: number): Promise<void> {
   return invoke<void>("set_refresh_interval", { minutes });
 }
 
+/** Devuelve los días tras los que se vacía automáticamente el contenido extraído (0 = nunca). */
+export function getContentPurgeDays(): Promise<number> {
+  return invoke<number>("get_content_purge_days");
+}
+
+/** Guarda los días de purga automática del contenido extraído (0 = nunca). */
+export function setContentPurgeDays(days: number): Promise<void> {
+  return invoke<void>("set_content_purge_days", { days });
+}
+
+/** Vacía el contenido extraído de artículos leídos (days=0: todos; >0: anteriores a `days` días). */
+export function purgeExtractedContent(days: number): Promise<number> {
+  return invoke<number>("purge_extracted_content", { days });
+}
+
 /** Devuelve el umbral de similitud de la búsqueda semántica (0.0–1.0). */
 export function getVectorSimilarityThreshold(): Promise<number> {
   return invoke<number>("get_vector_similarity_threshold");

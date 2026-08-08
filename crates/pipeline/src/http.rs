@@ -26,7 +26,7 @@ pub trait HttpClient: Send + Sync {
 }
 
 const USER_AGENT: &str =
-    "Lector/0.1 (lector de artículos personal; +https://localhost)";
+    "hub/0.1 (lector de artículos personal; +https://localhost)";
 
 /// Adaptador sobre `reqwest`.
 pub struct ReqwestClient(pub reqwest::Client);
